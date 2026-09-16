@@ -122,23 +122,12 @@
         .ob-drawer { background: #121418; border: 1px solid #1e2329; padding: 12px; border-radius: 8px; margin-top: 10px; }
         .ob-header { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13px; font-weight: bold; color: #16f7d1; }
         
-        .orderbook-table { width: 100%; border-collapse: collapse; font-family: monospace; font-size: 11px; }
-        .orderbook-table th { color: #848e9c; font-weight: normal; padding-bottom: 4px; border-bottom: 1px solid #2b313a; }
-        .orderbook-table tr { position: relative; }
-        .orderbook-table td { padding: 3px 4px; text-align: right; position: relative; z-index: 1; }
+        .orderbook-table { width: 100%; border-collapse: collapse; font-family: monospace; font-size: 11px; table-layout: fixed; }
+        .orderbook-table th { color: #848e9c; font-weight: normal; padding-bottom: 6px; border-bottom: 1px solid #2b313a; text-align: right; }
+        .orderbook-table th:first-child { text-align: left; }
+        .orderbook-table tr { height: 22px; }
+        .orderbook-table td { padding: 3px 4px; text-align: right; font-weight: 500; }
         
-        /* Derinlik Hacim Arka Plan Görseli */
-        .depth-bg {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            right: 0;
-            z-index: 0;
-            transition: width 0.2s ease;
-        }
-        .ask-bg { background-color: rgba(246, 70, 93, 0.2); }
-        .bid-bg { background-color: rgba(14, 203, 129, 0.2); }
-
         .asks td.price { color: #f6465d; text-align: left; font-weight: 600; }
         .bids td.price { color: #0ecb81; text-align: left; font-weight: 600; }
 
@@ -254,7 +243,7 @@
         <table class="orderbook-table">
             <thead>
                 <tr>
-                    <th style="text-align: left;" id="thPrice">Fiyat ($)</th>
+                    <th id="thPrice">Fiyat ($)</th>
                     <th id="thAmount">Miktar</th>
                     <th id="thTotal">Toplam ($)</th>
                 </tr>
@@ -847,7 +836,6 @@
             let askTotal = 0;
             let bidTotal = 0;
 
-            // Maksimum Toplam Hacmi Bularak Arka Plan Derinlik Yüzdesini Hesaplama
             const askList = asks.slice(0, 8).map(item => {
                 const price = parseFloat(item[0]);
                 const amount = parseFloat(item[1]);
@@ -867,12 +855,12 @@
             const maxAskTotal = askTotal || 1;
             const maxBidTotal = bidTotal || 1;
 
-            // Asks Render (Satışlar - Kırmızı)
+            // Asks Render (Satışlar - Kırmızı Derinlik Arka Planı)
             asksTable.innerHTML = askList.reverse().map(item => {
-                const depthPercent = Math.min(100, (item.cumulativeTotal / maxAskTotal) * 100);
+                const depthPercent = Math.min(100, (item.cumulativeTotal / maxAskTotal) * 100).toFixed(1);
+                const bgStyle = `background: linear-gradient(to left, rgba(246, 70, 93, 0.25) ${depthPercent}%, transparent ${depthPercent}%);`;
                 return `
-                    <tr>
-                        <div class="depth-bg ask-bg" style="width: ${depthPercent}%;"></div>
+                    <tr style="${bgStyle}">
                         <td class="price">${item.price < 1 ? item.price.toFixed(6) : item.price.toFixed(2)}</td>
                         <td>${item.amount.toFixed(4)}</td>
                         <td>${Math.round(item.total).toLocaleString()}</td>
@@ -880,12 +868,12 @@
                 `;
             }).join('');
 
-            // Bids Render (Alışlar - Yeşil)
+            // Bids Render (Alışlar - Yeşil Derinlik Arka Planı)
             bidsTable.innerHTML = bidList.map(item => {
-                const depthPercent = Math.min(100, (item.cumulativeTotal / maxBidTotal) * 100);
+                const depthPercent = Math.min(100, (item.cumulativeTotal / maxBidTotal) * 100).toFixed(1);
+                const bgStyle = `background: linear-gradient(to left, rgba(14, 203, 129, 0.25) ${depthPercent}%, transparent ${depthPercent}%);`;
                 return `
-                    <tr>
-                        <div class="depth-bg bid-bg" style="width: ${depthPercent}%;"></div>
+                    <tr style="${bgStyle}">
                         <td class="price">${item.price < 1 ? item.price.toFixed(6) : item.price.toFixed(2)}</td>
                         <td>${item.amount.toFixed(4)}</td>
                         <td>${Math.round(item.total).toLocaleString()}</td>
@@ -911,13 +899,12 @@
                 midSpreadEl.innerText = `Spread: ${spread < 1 ? spread.toFixed(4) : spread.toFixed(2)}`;
             }
 
-            // Alım / Satım Hacim Oranı Çizelgesi Güncelleme
+            // Alım / Satım Hacim Oranı Çizelgesi
             const totalVol = askTotal + bidTotal;
             const buyRatio = totalVol > 0 ? (bidTotal / totalVol) * 100 : 50;
-            const sellRatio = 100 - buyRatio;
 
             document.getElementById('ratioBuyText').innerText = `Alım %${buyRatio.toFixed(1)}`;
-            document.getElementById('ratioSellText').innerText = `%${sellRatio.toFixed(1)} Satım`;
+            document.getElementById('ratioSellText').innerText = `%${(100 - buyRatio).toFixed(1)} Satım`;
             document.getElementById('ratioBarFill').style.width = `${buyRatio}%`;
 
             // Tahta Balina Alarmı Kontrolü
