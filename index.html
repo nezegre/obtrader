@@ -124,10 +124,70 @@
         
         .orderbook-table { width: 100%; border-collapse: collapse; font-family: monospace; font-size: 11px; }
         .orderbook-table th { color: #848e9c; font-weight: normal; padding-bottom: 4px; border-bottom: 1px solid #2b313a; }
-        .orderbook-table td { padding: 2px 4px; text-align: right; }
+        .orderbook-table tr { position: relative; }
+        .orderbook-table td { padding: 3px 4px; text-align: right; position: relative; z-index: 1; }
         
-        .asks td.price { color: #f6465d; text-align: left; }
-        .bids td.price { color: #0ecb81; text-align: left; }
+        /* Derinlik Hacim Arka Plan Görseli */
+        .depth-bg {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            right: 0;
+            z-index: 0;
+            transition: width 0.2s ease;
+        }
+        .ask-bg { background-color: rgba(246, 70, 93, 0.2); }
+        .bid-bg { background-color: rgba(14, 203, 129, 0.2); }
+
+        .asks td.price { color: #f6465d; text-align: left; font-weight: 600; }
+        .bids td.price { color: #0ecb81; text-align: left; font-weight: 600; }
+
+        /* Ortadaki Canlı Fiyat Bandı */
+        .mid-price-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            margin: 6px 0;
+            background: #1a1d24;
+            border-top: 1px solid #2b313a;
+            border-bottom: 1px solid #2b313a;
+            border-radius: 4px;
+        }
+        .mid-price-val { font-size: 15px; font-weight: bold; font-family: monospace; }
+        .mid-price-val.up { color: #0ecb81; }
+        .mid-price-val.down { color: #f6465d; }
+        .mid-price-sub { font-size: 11px; color: #848e9c; }
+
+        /* Alım / Satım Oran Çizelgesi */
+        .ratio-container {
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 1px solid #1e2329;
+        }
+        .ratio-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        .ratio-buy-text { color: #0ecb81; }
+        .ratio-sell-text { color: #f6465d; }
+        .ratio-bar-bg {
+            height: 6px;
+            width: 100%;
+            background: #f6465d;
+            border-radius: 3px;
+            overflow: hidden;
+            display: flex;
+        }
+        .ratio-bar-fill {
+            height: 100%;
+            background: #0ecb81;
+            width: 50%;
+            transition: width 0.3s ease;
+        }
 
         /* MODAL YAPISI */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; z-index: 100; padding: 15px; }
@@ -167,7 +227,6 @@
 
     <div class="app-bar">
         <div class="app-title">OBTRADER <span>ULTRA</span></div>
-        <!-- Kripto Hacim Sıralamasına Göre Düzenlenen Dil Seçici -->
         <select class="lang-select" id="langSelect" onchange="changeLanguage(this.value)">
             <option value="en">EN 🇺🇸</option>
             <option value="zh">ZH 🇨🇳</option>
@@ -201,8 +260,28 @@
                 </tr>
             </thead>
             <tbody id="asksTable" class="asks"></tbody>
+        </table>
+
+        <!-- Ortadaki Anlık Canlı Fiyat -->
+        <div class="mid-price-bar">
+            <div class="mid-price-val" id="midPrice">--</div>
+            <div class="mid-price-sub" id="midPriceSpread">Yayılma: --</div>
+        </div>
+
+        <table class="orderbook-table">
             <tbody id="bidsTable" class="bids"></tbody>
         </table>
+
+        <!-- En Alttaki Alım/Satım Oran Çizelgesi -->
+        <div class="ratio-container">
+            <div class="ratio-labels">
+                <span class="ratio-buy-text" id="ratioBuyText">Alım %50.0</span>
+                <span class="ratio-sell-text" id="ratioSellText">%50.0 Satım</span>
+            </div>
+            <div class="ratio-bar-bg">
+                <div class="ratio-bar-fill" id="ratioBarFill"></div>
+            </div>
+        </div>
     </div>
 
     <div class="toast-container" id="toastContainer"></div>
@@ -266,7 +345,6 @@
     </div>
 
     <script>
-        // Kripto Adaptasyonu & Hacim Sırasına Göre i18n
         const i18n = {
             en: {
                 mainList: "Main List",
@@ -536,7 +614,7 @@
         let targetAlarmSymbol = '';
         let tickerWs, depthWs;
         let alarms = {};
-        let triggeredAlarms = new Set();
+        let lastPrices = {};
 
         function changeLanguage(lang) {
             currentLang = lang;
@@ -708,233 +786,281 @@
                     const changeEl = document.getElementById(`change-${sym}`);
 
                     if (priceEl && changeEl) {
-                        priceEl.innerText = price < 1 ? price.toFixed(6) : price.toLocaleString('tr-TR', {minimumFractionDigits: 2});
+                        priceEl.innerText = price < 1 ? price.toFixed(6) : price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                         changeEl.innerText = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
                         changeEl.className = `change ${change >= 0 ? 'up' : 'down'}`;
+                    }
 
-                        if (alarms[sym] && alarms[sym].targetPrice) {
-                            const target = alarms[sym].targetPrice;
-                            const mode = alarms[sym].mode || 'once';
-                            const key = `${sym}-price-${target}`;
-                            
-                            if (!triggeredAlarms.has(key) && Math.abs(price - target) / target < 0.002) {
-                                triggeredAlarms.add(key);
-                                const t = i18n[currentLang];
-                                showToast(t.toastPrice.replace('{sym}', sym.toUpperCase()).replace('{target}', target));
-
-                                if (mode === 'once') {
-                                    delete alarms[sym].targetPrice;
-                                    renderGrid();
-                                }
+                    // Hedef Fiyat Alarm Kontrolü
+                    if (alarms[sym] && alarms[sym].targetPrice) {
+                        const target = alarms[sym].targetPrice;
+                        const prev = lastPrices[sym];
+                        if (prev && ((prev < target && price >= target) || (prev > target && price <= target))) {
+                            const msg = i18n[currentLang].toastPrice.replace('{sym}', sym.toUpperCase()).replace('{target}', target);
+                            showToast(msg);
+                            if (alarms[sym].mode === 'once') {
+                                delete alarms[sym].targetPrice;
+                                renderGrid();
                             }
                         }
                     }
+                    lastPrices[sym] = price;
                 }
             };
         }
 
-        function updateLiveBoardTitle() {
-            const currentList = getCurrentList();
-            const item = currentList ? currentList.symbols.find(s => s.symbol === selectedSymbol) : null;
-            const name = item ? item.name : 'BTC/USDT';
-            const t = i18n[currentLang];
-            document.getElementById('activeSymbolTitle').innerText = `${name} ${t.liveBoard}`;
+        function selectSymbol(sym, name) {
+            selectedSymbol = sym;
+            document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+            const card = document.getElementById(`card-${sym}`);
+            if (card) card.classList.add('active');
+
+            updateLiveBoardTitle(name);
+            connectDepthStream();
         }
 
-        function selectSymbol(symbol, name) {
-            selectedSymbol = symbol;
-            document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
-            const activeCard = document.getElementById(`card-${symbol}`);
-            if (activeCard) activeCard.classList.add('active');
-            
-            updateLiveBoardTitle();
-            connectDepthStream();
+        function updateLiveBoardTitle(name) {
+            const currentList = getCurrentList();
+            const currentItem = currentList ? currentList.symbols.find(s => s.symbol === selectedSymbol) : null;
+            const displayName = name || (currentItem ? currentItem.name : '---');
+            document.getElementById('activeSymbolTitle').innerText = displayName;
         }
 
         function connectDepthStream() {
             if (depthWs) depthWs.close();
             if (!selectedSymbol) return;
 
-            depthWs = new WebSocket(`wss://stream.binance.com:9443/ws/${selectedSymbol}@depth20@100ms`);
+            depthWs = new WebSocket(`wss://stream.binance.com:9443/ws/${selectedSymbol}@depth10@100ms`);
 
             depthWs.onmessage = (event) => {
                 const data = JSON.parse(event.data);
-                if (data.bids && data.asks) renderOrderBook(data.bids, data.asks);
+                if (data.asks && data.bids) {
+                    renderOrderBook(data.asks, data.bids);
+                }
             };
         }
 
-        function renderOrderBook(bids, asks) {
-            const bidsTable = document.getElementById('bidsTable');
+        function renderOrderBook(asks, bids) {
             const asksTable = document.getElementById('asksTable');
-            bidsTable.innerHTML = ''; asksTable.innerHTML = '';
+            const bidsTable = document.getElementById('bidsTable');
 
-            const volThreshold = alarms[selectedSymbol] ? alarms[selectedSymbol].volumeThreshold : null;
-            const mode = alarms[selectedSymbol] ? (alarms[selectedSymbol].mode || 'once') : 'once';
-            const t = i18n[currentLang];
+            let askTotal = 0;
+            let bidTotal = 0;
 
-            asks.reverse().forEach(item => {
+            // Maksimum Toplam Hacmi Bularak Arka Plan Derinlik Yüzdesini Hesaplama
+            const askList = asks.slice(0, 8).map(item => {
                 const price = parseFloat(item[0]);
                 const amount = parseFloat(item[1]);
                 const total = price * amount;
-
-                if (volThreshold && total >= volThreshold) {
-                    const key = `${selectedSymbol}-vol-${price}-${total}`;
-                    if (!triggeredAlarms.has(key)) {
-                        triggeredAlarms.add(key);
-                        showToast(t.toastWhaleSell.replace('{sym}', selectedSymbol.toUpperCase()).replace('{vol}', Math.round(total).toLocaleString()));
-                        
-                        if (mode === 'once') {
-                            delete alarms[selectedSymbol].volumeThreshold;
-                            renderGrid();
-                        } else {
-                            setTimeout(() => triggeredAlarms.delete(key), 10000);
-                        }
-                    }
-                }
-
-                const tr = document.createElement('tr');
-                tr.className = 'asks';
-                tr.innerHTML = `
-                    <td class="price">${price < 1 ? price.toFixed(6) : price.toFixed(2)}</td>
-                    <td>${amount.toFixed(2)}</td>
-                    <td>$${Math.round(total).toLocaleString()}</td>
-                `;
-                asksTable.appendChild(tr);
+                askTotal += total;
+                return { price, amount, total, cumulativeTotal: askTotal };
             });
 
-            bids.forEach(item => {
+            const bidList = bids.slice(0, 8).map(item => {
                 const price = parseFloat(item[0]);
                 const amount = parseFloat(item[1]);
                 const total = price * amount;
-
-                if (volThreshold && total >= volThreshold) {
-                    const key = `${selectedSymbol}-vol-${price}-${total}`;
-                    if (!triggeredAlarms.has(key)) {
-                        triggeredAlarms.add(key);
-                        showToast(t.toastWhaleBuy.replace('{sym}', selectedSymbol.toUpperCase()).replace('{vol}', Math.round(total).toLocaleString()));
-                        
-                        if (mode === 'once') {
-                            delete alarms[selectedSymbol].volumeThreshold;
-                            renderGrid();
-                        } else {
-                            setTimeout(() => triggeredAlarms.delete(key), 10000);
-                        }
-                    }
-                }
-
-                const tr = document.createElement('tr');
-                tr.className = 'bids';
-                tr.innerHTML = `
-                    <td class="price">${price < 1 ? price.toFixed(6) : price.toFixed(2)}</td>
-                    <td>${amount.toFixed(2)}</td>
-                    <td>$${Math.round(total).toLocaleString()}</td>
-                `;
-                bidsTable.appendChild(tr);
+                bidTotal += total;
+                return { price, amount, total, cumulativeTotal: bidTotal };
             });
-        }
 
-        function openAddModal() { 
-            document.getElementById('newSymbolInput').placeholder = i18n[currentLang].symbolPlaceholder;
-            document.getElementById('addModal').style.display = 'flex'; 
-        }
-        
-        function openAlarmModal(symbol, name) {
-            targetAlarmSymbol = symbol;
-            const t = i18n[currentLang];
-            document.getElementById('alarmModalTitle').innerText = `${name} - ${t.settingsAlarm}`;
+            const maxAskTotal = askTotal || 1;
+            const maxBidTotal = bidTotal || 1;
+
+            // Asks Render (Satışlar - Kırmızı)
+            asksTable.innerHTML = askList.reverse().map(item => {
+                const depthPercent = Math.min(100, (item.cumulativeTotal / maxAskTotal) * 100);
+                return `
+                    <tr>
+                        <div class="depth-bg ask-bg" style="width: ${depthPercent}%;"></div>
+                        <td class="price">${item.price < 1 ? item.price.toFixed(6) : item.price.toFixed(2)}</td>
+                        <td>${item.amount.toFixed(4)}</td>
+                        <td>${Math.round(item.total).toLocaleString()}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Bids Render (Alışlar - Yeşil)
+            bidsTable.innerHTML = bidList.map(item => {
+                const depthPercent = Math.min(100, (item.cumulativeTotal / maxBidTotal) * 100);
+                return `
+                    <tr>
+                        <div class="depth-bg bid-bg" style="width: ${depthPercent}%;"></div>
+                        <td class="price">${item.price < 1 ? item.price.toFixed(6) : item.price.toFixed(2)}</td>
+                        <td>${item.amount.toFixed(4)}</td>
+                        <td>${Math.round(item.total).toLocaleString()}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Ortadaki Canlı Fiyat Bandı Hesaplama
+            const bestAsk = askList[askList.length - 1] ? askList[askList.length - 1].price : 0;
+            const bestBid = bidList[0] ? bidList[0].price : 0;
+            const midPrice = bestBid ? ((bestAsk + bestBid) / 2) : bestAsk;
+            const spread = Math.abs(bestAsk - bestBid);
+
+            const midPriceEl = document.getElementById('midPrice');
+            const midSpreadEl = document.getElementById('midPriceSpread');
             
-            const current = alarms[symbol] || {};
-            document.getElementById('alarmTargetPrice').value = current.targetPrice || '';
-            document.getElementById('alarmVolumeThreshold').value = current.volumeThreshold || '';
+            if (midPrice > 0) {
+                const prevMid = parseFloat(midPriceEl.getAttribute('data-prev') || 0);
+                midPriceEl.innerText = midPrice < 1 ? midPrice.toFixed(6) : midPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                midPriceEl.className = `mid-price-val ${midPrice >= prevMid ? 'up' : 'down'}`;
+                midPriceEl.setAttribute('data-prev', midPrice);
 
-            const mode = current.mode || 'once';
-            document.querySelector(`input[name="alarmMode"][value="${mode}"]`).checked = true;
-
-            const alarmsBox = document.getElementById('activeAlarmsBox');
-            const alarmsList = document.getElementById('activeAlarmsList');
-            alarmsList.innerHTML = '';
-
-            let hasAny = false;
-            const modeText = mode === 'once' ? t.once : t.persistent;
-
-            if (current.targetPrice) {
-                hasAny = true;
-                alarmsList.innerHTML += `
-                    <div class="alarm-item">
-                        <span>${t.alarmTargetText}: <strong>$${current.targetPrice}</strong> (${modeText})</span>
-                        <span class="alarm-delete" onclick="deleteAlarm('price')">✕</span>
-                    </div>`;
-            }
-            if (current.volumeThreshold) {
-                hasAny = true;
-                alarmsList.innerHTML += `
-                    <div class="alarm-item">
-                        <span>${t.alarmVolText}: <strong>$${current.volumeThreshold.toLocaleString()}</strong> (${modeText})</span>
-                        <span class="alarm-delete" onclick="deleteAlarm('volume')">✕</span>
-                    </div>`;
+                midSpreadEl.innerText = `Spread: ${spread < 1 ? spread.toFixed(4) : spread.toFixed(2)}`;
             }
 
-            alarmsBox.style.display = hasAny ? 'block' : 'none';
-            document.getElementById('alarmModal').style.display = 'flex';
+            // Alım / Satım Hacim Oranı Çizelgesi Güncelleme
+            const totalVol = askTotal + bidTotal;
+            const buyRatio = totalVol > 0 ? (bidTotal / totalVol) * 100 : 50;
+            const sellRatio = 100 - buyRatio;
+
+            document.getElementById('ratioBuyText').innerText = `Alım %${buyRatio.toFixed(1)}`;
+            document.getElementById('ratioSellText').innerText = `%${sellRatio.toFixed(1)} Satım`;
+            document.getElementById('ratioBarFill').style.width = `${buyRatio}%`;
+
+            // Tahta Balina Alarmı Kontrolü
+            if (alarms[selectedSymbol] && alarms[selectedSymbol].volumeThreshold) {
+                const threshold = alarms[selectedSymbol].volumeThreshold;
+                askList.forEach(item => {
+                    if (item.total >= threshold) {
+                        const msg = i18n[currentLang].toastWhaleSell.replace('{sym}', selectedSymbol.toUpperCase()).replace('{vol}', Math.round(item.total).toLocaleString());
+                        showToast(msg);
+                    }
+                });
+                bidList.forEach(item => {
+                    if (item.total >= threshold) {
+                        const msg = i18n[currentLang].toastWhaleBuy.replace('{sym}', selectedSymbol.toUpperCase()).replace('{vol}', Math.round(item.total).toLocaleString());
+                        showToast(msg);
+                    }
+                });
+            }
         }
 
-        function deleteAlarm(type) {
-            if (alarms[targetAlarmSymbol]) {
-                if (type === 'price') delete alarms[targetAlarmSymbol].targetPrice;
-                if (type === 'volume') delete alarms[targetAlarmSymbol].volumeThreshold;
+        function openAddModal() {
+            document.getElementById('addModal').style.display = 'flex';
+        }
+
+        function openAlarmModal(sym, name) {
+            targetAlarmSymbol = sym;
+            const modal = document.getElementById('alarmModal');
+            document.getElementById('alarmModalTitle').innerText = `${name} - ${i18n[currentLang].settingsAlarm}`;
+            
+            const conf = alarms[sym] || {};
+            document.getElementById('alarmTargetPrice').value = conf.targetPrice || '';
+            document.getElementById('alarmVolumeThreshold').value = conf.volumeThreshold || '';
+
+            renderActiveAlarmsList(sym);
+            modal.style.display = 'flex';
+        }
+
+        function renderActiveAlarmsList(sym) {
+            const box = document.getElementById('activeAlarmsBox');
+            const list = document.getElementById('activeAlarmsList');
+            const conf = alarms[sym];
+
+            if (conf && (conf.targetPrice || conf.volumeThreshold)) {
+                box.style.display = 'block';
+                list.innerHTML = '';
+                const t = i18n[currentLang];
+
+                if(conf.targetPrice) {
+                    list.innerHTML += `
+                        <div class="alarm-item">
+                            <span>🎯 ${t.alarmTargetText}: $${conf.targetPrice}</span>
+                            <span class="alarm-delete" onclick="clearAlarmProp('${sym}', 'targetPrice')">✕</span>
+                        </div>
+                    `;
+                }
+                if(conf.volumeThreshold) {
+                    list.innerHTML += `
+                        <div class="alarm-item">
+                            <span>🐋 ${t.alarmVolText}: $${conf.volumeThreshold.toLocaleString()}</span>
+                            <span class="alarm-delete" onclick="clearAlarmProp('${sym}', 'volumeThreshold')">✕</span>
+                        </div>
+                    `;
+                }
+            } else {
+                box.style.display = 'none';
+            }
+        }
+
+        function clearAlarmProp(sym, prop) {
+            if (alarms[sym]) {
+                delete alarms[sym][prop];
+                renderActiveAlarmsList(sym);
                 renderGrid();
-                openAlarmModal(targetAlarmSymbol, targetAlarmSymbol.toUpperCase());
             }
         }
 
-        function removeCurrentSymbol() {
-            const currentList = getCurrentList();
-            currentList.symbols = currentList.symbols.filter(s => s.symbol !== targetAlarmSymbol);
-            delete alarms[targetAlarmSymbol];
-
-            if (selectedSymbol === targetAlarmSymbol) {
-                selectedSymbol = currentList.symbols.length > 0 ? currentList.symbols[0].symbol : '';
-                if (selectedSymbol) selectSymbol(selectedSymbol, currentList.symbols[0].name);
-            }
-
-            renderGrid();
-            closeModal('alarmModal');
-            const t = i18n[currentLang];
-            showToast(t.toastRemoved.replace('{sym}', targetAlarmSymbol.toUpperCase()));
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
         }
-
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
         function addNewSymbol() {
-            const input = document.getElementById('newSymbolInput').value.trim().toLowerCase();
-            if (input) {
-                const formattedName = `${input.replace('usdt', '').toUpperCase()}/USDT`;
-                const currentList = getCurrentList();
-                currentList.symbols.push({ symbol: input, name: formattedName });
-                
+            const input = document.getElementById('newSymbolInput');
+            let raw = input.value.trim().toLowerCase();
+            if (!raw) return;
+
+            if (!raw.endsWith('usdt')) raw += 'usdt';
+            const name = raw.replace('usdt', '').toUpperCase() + '/USDT';
+
+            const currentList = getCurrentList();
+            if (!currentList.symbols.some(s => s.symbol === raw)) {
+                currentList.symbols.push({ symbol: raw, name: name });
                 renderGrid();
-                closeModal('addModal');
-                document.getElementById('newSymbolInput').value = '';
+                selectSymbol(raw, name);
             }
+
+            input.value = '';
+            closeModal('addModal');
         }
 
         function saveAlarmSettings() {
-            const price = document.getElementById('alarmTargetPrice').value;
-            const volume = document.getElementById('alarmVolumeThreshold').value;
-            const selectedMode = document.querySelector('input[name="alarmMode"]:checked').value;
+            const targetPrice = parseFloat(document.getElementById('alarmTargetPrice').value);
+            const volumeThreshold = parseFloat(document.getElementById('alarmVolumeThreshold').value);
+            const mode = document.querySelector('input[name="alarmMode"]:checked').value;
 
-            alarms[targetAlarmSymbol] = {
-                targetPrice: price ? parseFloat(price) : null,
-                volumeThreshold: volume ? parseFloat(volume) : null,
-                mode: selectedMode
-            };
+            if (targetAlarmSymbol) {
+                alarms[targetAlarmSymbol] = {
+                    targetPrice: targetPrice || null,
+                    volumeThreshold: volumeThreshold || null,
+                    mode: mode
+                };
+                
+                const msg = i18n[currentLang].toastSaved.replace('{sym}', targetAlarmSymbol.toUpperCase());
+                showToast(msg);
+                renderGrid();
+            }
 
-            renderGrid();
             closeModal('alarmModal');
-            const t = i18n[currentLang];
-            showToast(t.toastSaved.replace('{sym}', targetAlarmSymbol.toUpperCase()));
         }
 
+        function removeCurrentSymbol() {
+            if (!targetAlarmSymbol) return;
+
+            const currentList = getCurrentList();
+            currentList.symbols = currentList.symbols.filter(s => s.symbol !== targetAlarmSymbol);
+            
+            delete alarms[targetAlarmSymbol];
+
+            const msg = i18n[currentLang].toastRemoved.replace('{sym}', targetAlarmSymbol.toUpperCase());
+            showToast(msg);
+
+            closeModal('alarmModal');
+
+            if (currentList.symbols.length > 0) {
+                selectSymbol(currentList.symbols[0].symbol, currentList.symbols[0].name);
+            } else {
+                selectedSymbol = '';
+                updateLiveBoardTitle('---');
+            }
+
+            renderGrid();
+        }
+
+        // Başlangıç Yüklemesi
         renderTabs();
         renderGrid();
         connectDepthStream();
