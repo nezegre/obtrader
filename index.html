@@ -739,6 +739,7 @@
             document.getElementById('newSymbolInput').placeholder = t.symbolPlaceholder;
             document.getElementById('btnCancel').innerText = t.cancel;
             document.getElementById('btnAdd').innerText = t.add;
+            document.getElementById('alarmModalTitle').innerText = t.settingsAlarm;
             document.getElementById('lblTargetPrice').innerText = t.targetPrice;
             document.getElementById('lblWhaleVol').innerText = t.whaleVol;
             document.getElementById('lblAlarmType').innerText = t.alarmType;
@@ -749,116 +750,75 @@
             document.getElementById('btnSaveAlarm').innerText = t.saveAlarm;
             document.getElementById('btnRemoveCoin').innerText = t.removeCoin;
 
-            lists.forEach((l, idx) => {
-                if(l.titleKey) l.title = t[l.titleKey];
-                else l.title = `${t.listPrefix} ${idx + 1}`;
-            });
-
+            lists[0].title = t.mainList;
             renderTabs();
-            renderGrid();
-            updateLiveBoardTitle();
-            renderTradingViewWidget();
+            renderWatchGrid();
         }
 
-        function playBeep() {
-            try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(880, ctx.currentTime);
-                gain.gain.setValueAtTime(0.1, ctx.currentTime);
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.start();
-                osc.stop(ctx.currentTime + 0.3);
-            } catch(e) {}
-        }
-
-        function showToast(msg) {
-            playBeep();
+        function showToast(message) {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
             toast.className = 'toast';
-            toast.innerText = msg;
+            toast.innerText = message;
             container.appendChild(toast);
-            setTimeout(() => toast.remove(), 4000);
+            setTimeout(() => {
+                toast.remove();
+            }, 4000);
         }
 
         function renderTabs() {
-            const tabList = document.getElementById('tabList');
-            tabList.innerHTML = '';
-
-            lists.forEach(l => {
+            const container = document.getElementById('tabList');
+            container.innerHTML = '';
+            lists.forEach(list => {
                 const tab = document.createElement('div');
-                tab.className = `tab ${l.id === activeListId ? 'active' : ''}`;
-                tab.innerText = l.title;
-                tab.onclick = () => switchTab(l.id);
-                tabList.appendChild(tab);
+                tab.className = `tab ${list.id === activeListId ? 'active' : ''}`;
+                tab.innerText = list.title;
+                tab.onclick = () => {
+                    activeListId = list.id;
+                    renderTabs();
+                    renderWatchGrid();
+                };
+                container.appendChild(tab);
             });
         }
 
         function createNewTab() {
-            const newId = 'list_' + Date.now();
+            const count = lists.length;
             const t = i18n[currentLang];
-            const newTitle = `${t.listPrefix} ${lists.length + 1}`;
-            
-            lists.push({
-                id: newId,
-                title: newTitle,
+            const newList = {
+                id: 'list_' + Date.now(),
+                title: `${t.listPrefix} ${count}`,
                 symbols: [
-                    { symbol: 'btcusdt', name: 'BTC/USDT' },
-                    { symbol: 'ethusdt', name: 'ETH/USDT' }
+                    { symbol: 'solusdt', name: 'SOL/USDT' },
+                    { symbol: 'bnbusdt', name: 'BNB/USDT' }
                 ]
-            });
-
-            switchTab(newId);
-        }
-
-        function switchTab(listId) {
-            activeListId = listId;
+            };
+            lists.push(newList);
+            activeListId = newList.id;
             renderTabs();
-            
-            const currentList = getCurrentList();
-            if (currentList.symbols.length > 0) {
-                selectedSymbol = currentList.symbols[0].symbol;
-                selectSymbol(selectedSymbol, currentList.symbols[0].name);
-            } else {
-                selectedSymbol = '';
-            }
-
-            renderGrid();
+            renderWatchGrid();
+            connectTickerWs();
         }
 
-        function getCurrentList() {
-            return lists.find(l => l.id === activeListId);
-        }
-
-        function renderGrid() {
+        function renderWatchGrid() {
             const grid = document.getElementById('watchGrid');
             grid.innerHTML = '';
-
-            const currentList = getCurrentList();
+            const currentList = lists.find(l => l.id === activeListId);
+            if (!currentList) return;
 
             currentList.symbols.forEach(item => {
                 const card = document.createElement('div');
                 card.className = `card ${item.symbol === selectedSymbol ? 'active' : ''}`;
-                card.id = `card-${item.symbol}`;
-                
-                card.onclick = (e) => {
-                    if(!e.target.classList.contains('more-btn')) {
-                        selectSymbol(item.symbol, item.name);
-                    }
-                };
+                card.onclick = () => selectSymbol(item.symbol);
 
                 const hasAlarm = alarms[item.symbol] && (alarms[item.symbol].targetPrice || alarms[item.symbol].volumeThreshold);
 
                 card.innerHTML = `
                     <div class="card-header">
-                        <div class="symbol-name">${item.name}</div>
+                        <span class="symbol-name">${item.name}</span>
                         <div class="header-right">
-                            <div class="change" id="change-${item.symbol}">%0.00</div>
-                            <div class="more-btn ${hasAlarm ? 'has-alarm' : ''}" onclick="openAlarmModal('${item.symbol}', '${item.name}')">⋮</div>
+                            <span class="change" id="change-${item.symbol}">--%</span>
+                            <div class="more-btn ${hasAlarm ? 'has-alarm' : ''}" onclick="openAlarmModal(event, '${item.symbol}')">⋮</div>
                         </div>
                     </div>
                     <div class="card-body">
@@ -868,85 +828,31 @@
                 grid.appendChild(card);
             });
 
-            const addCard = document.createElement('div');
-            addCard.className = 'card-add-box';
-            addCard.onclick = openAddModal;
-            addCard.innerHTML = `<div class="card-add-icon">＋</div>`;
-            grid.appendChild(addCard);
-
-            connectTickerStream();
+            const addBox = document.createElement('div');
+            addBox.className = 'card-add-box';
+            addBox.onclick = () => openModal('addModal');
+            addBox.innerHTML = `<span class="card-add-icon">＋</span>`;
+            grid.appendChild(addBox);
         }
 
-        function connectTickerStream() {
-            if (tickerWs) tickerWs.close();
-            const currentList = getCurrentList();
-            if (!currentList || currentList.symbols.length === 0) return;
-
-            const streams = currentList.symbols.map(i => `${i.symbol}@ticker`).join('/');
-            tickerWs = new WebSocket(`wss://stream.binance.com:9443/ws/${streams}`);
-
-            tickerWs.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.s) {
-                    const sym = data.s.toLowerCase();
-                    const price = parseFloat(data.c);
-                    const change = parseFloat(data.P);
-
-                    const priceEl = document.getElementById(`price-${sym}`);
-                    const changeEl = document.getElementById(`change-${sym}`);
-
-                    if (priceEl && changeEl) {
-                        priceEl.innerText = price < 1 ? price.toFixed(6) : price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                        changeEl.innerText = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
-                        changeEl.className = `change ${change >= 0 ? 'up' : 'down'}`;
-                    }
-
-                    if (alarms[sym] && alarms[sym].targetPrice) {
-                        const target = alarms[sym].targetPrice;
-                        const prev = lastPrices[sym];
-                        if (prev && ((prev < target && price >= target) || (prev > target && price <= target))) {
-                            const msg = i18n[currentLang].toastPrice.replace('{sym}', sym.toUpperCase()).replace('{target}', target);
-                            showToast(msg);
-                            if (alarms[sym].mode === 'once') {
-                                delete alarms[sym].targetPrice;
-                                renderGrid();
-                            }
-                        }
-                    }
-                    lastPrices[sym] = price;
-                }
-            };
-        }
-
-        function selectSymbol(sym, name) {
+        function selectSymbol(sym) {
             selectedSymbol = sym;
-            isInitialAsksScrollDone = false; // Symbol değiştiğinde scroll sıfırla
-            document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
-            const card = document.getElementById(`card-${sym}`);
-            if (card) card.classList.add('active');
+            const currentList = lists.find(l => l.id === activeListId);
+            const found = currentList ? currentList.symbols.find(s => s.symbol === sym) : null;
+            const displayName = found ? found.name : sym.toUpperCase();
 
-            updateLiveBoardTitle(name);
-            connectDepthStream();
-            renderTradingViewWidget();
-        }
-
-        function updateLiveBoardTitle(name) {
-            const currentList = getCurrentList();
-            const currentItem = currentList ? currentList.symbols.find(s => s.symbol === selectedSymbol) : null;
-            const displayName = name || (currentItem ? currentItem.name : '---');
             document.getElementById('activeSymbolTitle').innerText = displayName;
             document.getElementById('chartSymbolTitle').innerText = `${displayName} Chart`;
+
+            renderWatchGrid();
+            initTradingViewWidget(sym);
+            connectDepthWs(sym);
         }
 
-        /* TRADINGVIEW GRAFİK YÜKLEYİCİ */
-        function renderTradingViewWidget() {
-            if (!selectedSymbol) return;
-            const container = document.getElementById('tvChartContainer');
-            container.innerHTML = ''; 
-
-            const formattedSymbol = `BINANCE:${selectedSymbol.toUpperCase()}`;
-
-            new TradingView.widget({
+        function initTradingViewWidget(sym) {
+            const formattedSymbol = `BINANCE:${sym.toUpperCase()}`;
+            document.getElementById('tvChartContainer').innerHTML = '';
+            tvWidget = new TradingView.widget({
                 "autosize": true,
                 "symbol": formattedSymbol,
                 "interval": "15",
@@ -956,167 +862,79 @@
                 "locale": currentLang,
                 "toolbar_bg": "#121418",
                 "enable_publishing": false,
-                "hide_side_toolbar": true,
-                "allow_symbol_change": false,
+                "allow_symbol_change": true,
                 "container_id": "tvChartContainer"
             });
         }
 
-        function connectDepthStream() {
-            if (depthWs) depthWs.close();
-            if (!selectedSymbol) return;
+        function openModal(id) {
+            document.getElementById(id).style.display = 'flex';
+        }
 
-            depthWs = new WebSocket(`wss://stream.binance.com:9443/ws/${selectedSymbol}@depth20@100ms`);
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
 
-            depthWs.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.asks && data.bids) {
-                    renderOrderBook(data.asks, data.bids);
+        function addNewSymbol() {
+            const input = document.getElementById('newSymbolInput');
+            let raw = input.value.trim().toLowerCase();
+            if (!raw) return;
+            if (!raw.endsWith('usdt')) raw += 'usdt';
+
+            const name = raw.replace('usdt', '').toUpperCase() + '/USDT';
+            const currentList = lists.find(l => l.id === activeListId);
+            if (currentList) {
+                if (!currentList.symbols.find(s => s.symbol === raw)) {
+                    currentList.symbols.push({ symbol: raw, name });
                 }
-            };
+            }
+            input.value = '';
+            closeModal('addModal');
+            renderWatchGrid();
+            connectTickerWs();
+            selectSymbol(raw);
         }
 
-        function renderOrderBook(asks, bids) {
-            const asksTable = document.getElementById('asksTable');
-            const bidsTable = document.getElementById('bidsTable');
-            const asksContainer = document.getElementById('asksContainer');
-
-            let totalAskVol = 0;
-            let totalBidVol = 0;
-
-            const askList = asks.slice(0, 30).map(item => {
-                const price = parseFloat(item[0]);
-                const amount = parseFloat(item[1]);
-                const total = price * amount;
-                totalAskVol += total;
-                return { price, amount, total };
-            });
-
-            const bidList = bids.slice(0, 30).map(item => {
-                const price = parseFloat(item[0]);
-                const amount = parseFloat(item[1]);
-                const total = price * amount;
-                totalBidVol += total;
-                return { price, amount, total };
-            });
-
-            // Tablodaki EN YÜKSEK TEKİL HACME göre oranlama
-            const maxAskSingleTotal = Math.max(...askList.map(a => a.total), 1);
-            const maxBidSingleTotal = Math.max(...bidList.map(b => b.total), 1);
-
-            // Asks Render - Büyükten küçüğe sıralayarak en düşük fiyatları tablonun altına getiriyoruz
-            asksTable.innerHTML = askList.slice().reverse().map(item => {
-                const depthPercent = Math.min(100, (item.total / maxAskSingleTotal) * 100).toFixed(1);
-                const bgStyle = `background: linear-gradient(to left, rgba(246, 70, 93, 0.4) ${depthPercent}%, transparent ${depthPercent}%);`;
-                return `
-                    <tr style="${bgStyle}">
-                        <td class="price">${item.price < 1 ? item.price.toFixed(6) : item.price.toFixed(2)}</td>
-                        <td>${item.amount.toFixed(4)}</td>
-                        <td>${Math.round(item.total).toLocaleString()}</td>
-                    </tr>
-                `;
-            }).join('');
-
-            // Bids Render
-            bidsTable.innerHTML = bidList.map(item => {
-                const depthPercent = Math.min(100, (item.total / maxBidSingleTotal) * 100).toFixed(1);
-                const bgStyle = `background: linear-gradient(to left, rgba(14, 203, 129, 0.4) ${depthPercent}%, transparent ${depthPercent}%);`;
-                return `
-                    <tr style="${bgStyle}">
-                        <td class="price">${item.price < 1 ? item.price.toFixed(6) : item.price.toFixed(2)}</td>
-                        <td>${item.amount.toFixed(4)}</td>
-                        <td>${Math.round(item.total).toLocaleString()}</td>
-                    </tr>
-                `;
-            }).join('');
-
-            // Satış Tahtası Scroll'unu En Aşağıya Kaydır (En düşük fiyatlar görünür)
-            if (!isInitialAsksScrollDone && asksContainer) {
-                asksContainer.scrollTop = asksContainer.scrollHeight;
-                isInitialAsksScrollDone = true;
-            }
-
-            // Ortadaki Sabit Fiyat Bandı
-            const bestAsk = askList[0] ? askList[0].price : 0;
-            const bestBid = bidList[0] ? bidList[0].price : 0;
-            const midPrice = bestBid ? ((bestAsk + bestBid) / 2) : bestAsk;
-            const spread = Math.abs(bestAsk - bestBid);
-
-            const midPriceEl = document.getElementById('midPrice');
-            const midSpreadEl = document.getElementById('midPriceSpread');
-            
-            if (midPrice > 0) {
-                midPriceEl.innerText = midPrice < 1 ? midPrice.toFixed(6) : midPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                midSpreadEl.innerText = `Spread: ${spread < 1 ? spread.toFixed(4) : spread.toFixed(2)}`;
-            }
-
-            // Alım / Satım Hacim Oranı
-            const grandTotalVol = totalAskVol + totalBidVol;
-            const buyRatio = grandTotalVol > 0 ? (totalBidVol / grandTotalVol) * 100 : 50;
-            const t = i18n[currentLang];
-
-            document.getElementById('ratioBuyText').innerText = `${t.buyText} %${buyRatio.toFixed(1)}`;
-            document.getElementById('ratioSellText').innerText = `%${(100 - buyRatio).toFixed(1)} ${t.sellText}`;
-            document.getElementById('ratioBarFill').style.width = `${buyRatio}%`;
-
-            // Tahta Balina Alarmı Kontrolü
-            if (alarms[selectedSymbol] && alarms[selectedSymbol].volumeThreshold) {
-                const threshold = alarms[selectedSymbol].volumeThreshold;
-                askList.forEach(item => {
-                    if (item.total >= threshold) {
-                        const msg = i18n[currentLang].toastWhaleSell.replace('{sym}', selectedSymbol.toUpperCase()).replace('{vol}', Math.round(item.total).toLocaleString());
-                        showToast(msg);
-                    }
-                });
-                bidList.forEach(item => {
-                    if (item.total >= threshold) {
-                        const msg = i18n[currentLang].toastWhaleBuy.replace('{sym}', selectedSymbol.toUpperCase()).replace('{vol}', Math.round(item.total).toLocaleString());
-                        showToast(msg);
-                    }
-                });
-            }
-        }
-
-        function openAddModal() {
-            document.getElementById('addModal').style.display = 'flex';
-        }
-
-        function openAlarmModal(sym, name) {
+        function openAlarmModal(event, sym) {
+            event.stopPropagation();
             targetAlarmSymbol = sym;
-            const modal = document.getElementById('alarmModal');
-            document.getElementById('alarmModalTitle').innerText = `${name} - ${i18n[currentLang].settingsAlarm}`;
+            const currentAlarm = alarms[sym] || {};
             
-            const conf = alarms[sym] || {};
-            document.getElementById('alarmTargetPrice').value = conf.targetPrice || '';
-            document.getElementById('alarmVolumeThreshold').value = conf.volumeThreshold || '';
+            document.getElementById('alarmTargetPrice').value = currentAlarm.targetPrice || '';
+            document.getElementById('alarmVolumeThreshold').value = currentAlarm.volumeThreshold || '';
+
+            const mode = currentAlarm.mode || 'once';
+            const radios = document.getElementsByName('alarmMode');
+            radios.forEach(r => r.checked = (r.value === mode));
 
             renderActiveAlarmsList(sym);
-            modal.style.display = 'flex';
+            openModal('alarmModal');
         }
 
         function renderActiveAlarmsList(sym) {
             const box = document.getElementById('activeAlarmsBox');
-            const list = document.getElementById('activeAlarmsList');
-            const conf = alarms[sym];
+            const listContainer = document.getElementById('activeAlarmsList');
+            const current = alarms[sym];
+            const t = i18n[currentLang];
 
-            if (conf && (conf.targetPrice || conf.volumeThreshold)) {
+            if (current && (current.targetPrice || current.volumeThreshold)) {
                 box.style.display = 'block';
-                list.innerHTML = '';
-                const t = i18n[currentLang];
+                listContainer.innerHTML = '';
 
-                if(conf.targetPrice) {
-                    list.innerHTML += `
+                if (current.targetPrice) {
+                    listContainer.innerHTML += `
                         <div class="alarm-item">
-                            <span>🎯 ${t.alarmTargetText}: $${conf.targetPrice}</span>
-                            <span class="alarm-delete" onclick="clearAlarmProp('${sym}', 'targetPrice')">✕</span>
+                            <span>${t.alarmTargetText}: $${current.targetPrice} (${current.mode === 'once' ? t.once : t.persistent})</span>
+                            <span class="alarm-delete" onclick="clearSpecificAlarm('${sym}', 'targetPrice')">✕</span>
                         </div>
                     `;
                 }
-                if(conf.volumeThreshold) {
-                    list.innerHTML += `
+
+                if (current.volumeThreshold) {
+                    listContainer.innerHTML += `
                         <div class="alarm-item">
-                            <span>🐋 ${t.alarmVolText}: $${conf.volumeThreshold.toLocaleString()}</span>
-                            <span class="alarm-delete" onclick="clearAlarmProp('${sym}', 'volumeThreshold')">✕</span>
+                            <span>${t.alarmVolText}: $${Number(current.volumeThreshold).toLocaleString()}</span>
+                            <span class="alarm-delete" onclick="clearSpecificAlarm('${sym}', 'volumeThreshold')">✕</span>
                         </div>
                     `;
                 }
@@ -1125,82 +943,231 @@
             }
         }
 
-        function clearAlarmProp(sym, prop) {
+        function clearSpecificAlarm(sym, type) {
             if (alarms[sym]) {
-                delete alarms[sym][prop];
-                renderActiveAlarmsList(sym);
-                renderGrid();
+                delete alarms[sym][type];
+                if (!alarms[sym].targetPrice && !alarms[sym].volumeThreshold) {
+                    delete alarms[sym];
+                }
             }
-        }
-
-        function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
-        }
-
-        function addNewSymbol() {
-            const input = document.getElementById('newSymbolInput');
-            let raw = input.value.trim().toLowerCase();
-            if (!raw) return;
-
-            if (!raw.endsWith('usdt')) raw += 'usdt';
-            const name = raw.replace('usdt', '').toUpperCase() + '/USDT';
-
-            const currentList = getCurrentList();
-            if (!currentList.symbols.some(s => s.symbol === raw)) {
-                currentList.symbols.push({ symbol: raw, name: name });
-                renderGrid();
-                selectSymbol(raw, name);
-            }
-
-            input.value = '';
-            closeModal('addModal');
+            renderActiveAlarmsList(sym);
+            renderWatchGrid();
         }
 
         function saveAlarmSettings() {
             const targetPrice = parseFloat(document.getElementById('alarmTargetPrice').value);
             const volumeThreshold = parseFloat(document.getElementById('alarmVolumeThreshold').value);
             const mode = document.querySelector('input[name="alarmMode"]:checked').value;
+            const t = i18n[currentLang];
 
-            if (targetAlarmSymbol) {
-                alarms[targetAlarmSymbol] = {
-                    targetPrice: targetPrice || null,
-                    volumeThreshold: volumeThreshold || null,
-                    mode: mode
-                };
-                
-                const msg = i18n[currentLang].toastSaved.replace('{sym}', targetAlarmSymbol.toUpperCase());
-                showToast(msg);
-                renderGrid();
+            if (!targetAlarmSymbol) return;
+
+            if (!alarms[targetAlarmSymbol]) alarms[targetAlarmSymbol] = {};
+
+            if (!isNaN(targetPrice) && targetPrice > 0) {
+                alarms[targetAlarmSymbol].targetPrice = targetPrice;
+            } else {
+                delete alarms[targetAlarmSymbol].targetPrice;
+            }
+
+            if (!isNaN(volumeThreshold) && volumeThreshold > 0) {
+                alarms[targetAlarmSymbol].volumeThreshold = volumeThreshold;
+            } else {
+                delete alarms[targetAlarmSymbol].volumeThreshold;
+            }
+
+            alarms[targetAlarmSymbol].mode = mode;
+
+            if (!alarms[targetAlarmSymbol].targetPrice && !alarms[targetAlarmSymbol].volumeThreshold) {
+                delete alarms[targetAlarmSymbol];
             }
 
             closeModal('alarmModal');
+            renderWatchGrid();
+            showToast(t.toastSaved.replace('{sym}', targetAlarmSymbol.toUpperCase()));
         }
 
         function removeCurrentSymbol() {
-            if (!targetAlarmSymbol) return;
-
-            const currentList = getCurrentList();
-            currentList.symbols = currentList.symbols.filter(s => s.symbol !== targetAlarmSymbol);
-            
-            delete alarms[targetAlarmSymbol];
-
-            const msg = i18n[currentLang].toastRemoved.replace('{sym}', targetAlarmSymbol.toUpperCase());
-            showToast(msg);
-
-            closeModal('alarmModal');
-
-            if (currentList.symbols.length > 0) {
-                selectSymbol(currentList.symbols[0].symbol, currentList.symbols[0].name);
-            } else {
-                selectedSymbol = '';
-                updateLiveBoardTitle('---');
+            const t = i18n[currentLang];
+            const currentList = lists.find(l => l.id === activeListId);
+            if (currentList) {
+                currentList.symbols = currentList.symbols.filter(s => s.symbol !== targetAlarmSymbol);
+                delete alarms[targetAlarmSymbol];
             }
+            closeModal('alarmModal');
+            renderWatchGrid();
 
-            renderGrid();
+            if (selectedSymbol === targetAlarmSymbol && currentList.symbols.length > 0) {
+                selectSymbol(currentList.symbols[0].symbol);
+            }
+            showToast(t.toastRemoved.replace('{sym}', targetAlarmSymbol.toUpperCase()));
         }
 
-        // Başlangıç Kurulumları
-        changeLanguage(currentLang);
+        function getAllTrackedSymbols() {
+            const set = new Set();
+            lists.forEach(l => {
+                l.symbols.forEach(s => set.add(s.symbol));
+            });
+            return Array.from(set);
+        }
+
+        function connectTickerWs() {
+            if (tickerWs) tickerWs.close();
+            const symbols = getAllTrackedSymbols();
+            if (symbols.length === 0) return;
+
+            const streams = symbols.map(s => `${s}@ticker`).join('/');
+            tickerWs = new WebSocket(`wss://stream.binance.com:9443/ws/${streams}`);
+
+            tickerWs.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data && data.s) {
+                    const sym = data.s.toLowerCase();
+                    const price = parseFloat(data.c);
+                    const change = parseFloat(data.P);
+
+                    const priceEl = document.getElementById(`price-${sym}`);
+                    const changeEl = document.getElementById(`change-${sym}`);
+
+                    if (priceEl) {
+                        priceEl.innerText = price > 10 ? price.toFixed(2) : price.toFixed(4);
+                    }
+                    if (changeEl) {
+                        changeEl.innerText = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+                        changeEl.className = `change ${change >= 0 ? 'up' : 'down'}`;
+                    }
+
+                    checkPriceAlarm(sym, price);
+                }
+            };
+        }
+
+        function checkPriceAlarm(sym, price) {
+            const alarm = alarms[sym];
+            if (!alarm || !alarm.targetPrice) return;
+
+            const lastPrice = lastPrices[sym] || price;
+            const target = alarm.targetPrice;
+            const t = i18n[currentLang];
+
+            if ((lastPrice < target && price >= target) || (lastPrice > target && price <= target)) {
+                showToast(t.toastPrice.replace('{sym}', sym.toUpperCase()).replace('{target}', target));
+                if (alarm.mode === 'once') {
+                    delete alarm.targetPrice;
+                    if (!alarm.volumeThreshold) delete alarms[sym];
+                    renderWatchGrid();
+                }
+            }
+            lastPrices[sym] = price;
+        }
+
+        function connectDepthWs(sym) {
+            if (depthWs) depthWs.close();
+            isInitialAsksScrollDone = false;
+
+            depthWs = new WebSocket(`wss://stream.binance.com:9443/ws/${sym}@depth20@100ms`);
+
+            depthWs.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data && data.asks && data.bids) {
+                    renderOrderBook(data.asks, data.bids, sym);
+                }
+            };
+        }
+
+        function renderOrderBook(asks, bids, sym) {
+            const asksTable = document.getElementById('asksTable');
+            const bidsTable = document.getElementById('bidsTable');
+            const midPriceEl = document.getElementById('midPrice');
+            const spreadEl = document.getElementById('midPriceSpread');
+            const t = i18n[currentLang];
+
+            asksTable.innerHTML = '';
+            bidsTable.innerHTML = '';
+
+            let totalAskVol = 0;
+            let totalBidVol = 0;
+
+            const alarm = alarms[sym];
+            const volThreshold = alarm ? alarm.volumeThreshold : null;
+
+            // Satışlar (Asks)
+            const sortedAsks = [...asks].slice(0, 15).reverse();
+            sortedAsks.forEach(item => {
+                const price = parseFloat(item[0]);
+                const amount = parseFloat(item[1]);
+                const total = price * amount;
+                totalAskVol += total;
+
+                if (volThreshold && total >= volThreshold) {
+                    showToast(t.toastWhaleSell.replace('{sym}', sym.toUpperCase()).replace('{vol}', Math.round(total).toLocaleString()));
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="price">${price > 10 ? price.toFixed(2) : price.toFixed(4)}</td>
+                    <td>${amount.toFixed(3)}</td>
+                    <td>${Math.round(total).toLocaleString()}</td>
+                `;
+                asksTable.appendChild(tr);
+            });
+
+            // Alışlar (Bids)
+            const sortedBids = [...bids].slice(0, 15);
+            sortedBids.forEach(item => {
+                const price = parseFloat(item[0]);
+                const amount = parseFloat(item[1]);
+                const total = price * amount;
+                totalBidVol += total;
+
+                if (volThreshold && total >= volThreshold) {
+                    showToast(t.toastWhaleBuy.replace('{sym}', sym.toUpperCase()).replace('{vol}', Math.round(total).toLocaleString()));
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="price">${price > 10 ? price.toFixed(2) : price.toFixed(4)}</td>
+                    <td>${amount.toFixed(3)}</td>
+                    <td>${Math.round(total).toLocaleString()}</td>
+                `;
+                bidsTable.appendChild(tr);
+            });
+
+            // Orta Fiyat ve Spread
+            if (asks.length > 0 && bids.length > 0) {
+                const bestAsk = parseFloat(asks[0][0]);
+                const bestBid = parseFloat(bids[0][0]);
+                const mid = (bestAsk + bestBid) / 2;
+                const spread = bestAsk - bestBid;
+
+                midPriceEl.innerText = mid > 10 ? mid.toFixed(2) : mid.toFixed(4);
+                spreadEl.innerText = `Spread: ${spread.toFixed(2)}`;
+            }
+
+            // Alım/Satım Oranı Barı
+            const grandTotal = totalAskVol + totalBidVol;
+            if (grandTotal > 0) {
+                const buyPct = ((totalBidVol / grandTotal) * 100).toFixed(1);
+                const sellPct = ((totalAskVol / grandTotal) * 100).toFixed(1);
+
+                document.getElementById('ratioBuyText').innerText = `${t.buyText} %${buyPct}`;
+                document.getElementById('ratioSellText').innerText = `%${sellPct} ${t.sellText}`;
+                document.getElementById('ratioBarFill').style.width = `${buyPct}%`;
+            }
+
+            // Asks Tablosunu Aşağıya Kaydır (İlk Yükleme)
+            if (!isInitialAsksScrollDone) {
+                const asksContainer = document.getElementById('asksContainer');
+                asksContainer.scrollTop = asksContainer.scrollHeight;
+                isInitialAsksScrollDone = true;
+            }
+        }
+
+        window.onload = () => {
+            changeLanguage(currentLang);
+            selectSymbol(selectedSymbol);
+            connectTickerWs();
+        };
     </script>
 </body>
 </html>
