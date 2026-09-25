@@ -178,7 +178,7 @@
         .orderbook-table th:first-child { text-align: left; }
         
         .scrollable-table-container {
-            max-height: 200px;
+            max-height: 320px;
             overflow-y: auto;
             scrollbar-width: thin;
             scrollbar-color: #2b313a transparent;
@@ -1030,7 +1030,7 @@
             if (depthWs) depthWs.close();
             if (!selectedSymbol) return;
 
-            depthWs = new WebSocket(`wss://stream.binance.com:9443/ws/${selectedSymbol}@depth20@100ms`);
+            depthWs = new WebSocket(`wss://stream.binance.com:9443/ws/${selectedSymbol}@depth@100ms`);
 
             depthWs.onmessage = (event) => {
                 const data = JSON.parse(event.data);
@@ -1048,7 +1048,7 @@
             let totalAskVol = 0;
             let totalBidVol = 0;
 
-            const askList = asks.slice(0, 30).map(item => {
+            const askList = asks.slice(0, 100).map(item => {
                 const price = parseFloat(item[0]);
                 const amount = parseFloat(item[1]);
                 const total = price * amount;
@@ -1056,7 +1056,7 @@
                 return { price, amount, total };
             });
 
-            const bidList = bids.slice(0, 30).map(item => {
+            const bidList = bids.slice(0, 100).map(item => {
                 const price = parseFloat(item[0]);
                 const amount = parseFloat(item[1]);
                 const total = price * amount;
