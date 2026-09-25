@@ -149,7 +149,7 @@
             border: 1px solid #1e2329;
             border-radius: 8px;
             padding: 10px;
-            height: 480px;
+            height: 400px;
             display: flex;
             flex-direction: column;
         }
@@ -166,7 +166,7 @@
             flex-grow: 1;
             width: 100%;
             height: 100%;
-            min-height: 360px;
+            min-height: 300px;
         }
 
         /* CANLI TAHTA VE SCROLL DÜZENİ */
@@ -178,7 +178,7 @@
         .orderbook-table th:first-child { text-align: left; }
         
         .scrollable-table-container {
-            max-height: 320px;
+            height: 260px;
             overflow-y: auto;
             scrollbar-width: thin;
             scrollbar-color: #2b313a transparent;
@@ -372,7 +372,7 @@
         <div class="ob-drawer">
             <div class="ob-header">
                 <span id="activeSymbolTitle">BTC/USDT</span>
-                <span style="color: #848e9c; font-size: 11px;" id="lblDepth">Depth: 40x40</span>
+                <span style="color: #848e9c; font-size: 11px;" id="lblDepth">Depth: 20x20</span>
             </div>
             
             <table class="orderbook-table">
@@ -484,7 +484,7 @@
                 mainList: "Main List",
                 listPrefix: "List",
                 liveBoard: "Live Order Book",
-                depth: "Depth: 30x30",
+                depth: "Depth: 20x20",
                 price: "Price ($)",
                 amount: "Amount",
                 total: "Total ($)",
@@ -518,7 +518,7 @@
                 mainList: "主列表",
                 listPrefix: "列表",
                 liveBoard: "实时订单簿",
-                depth: "深度: 30x30",
+                depth: "深度: 20x20",
                 price: "价格 ($)",
                 amount: "数量",
                 total: "总计 ($)",
@@ -552,7 +552,7 @@
                 mainList: "Ana Listem",
                 listPrefix: "Liste",
                 liveBoard: "Canlı Tahta",
-                depth: "Derinlik: 30x30",
+                depth: "Derinlik: 20x20",
                 price: "Fiyat ($)",
                 amount: "Miktar",
                 total: "Toplam ($)",
@@ -586,7 +586,7 @@
                 mainList: "Hauptliste",
                 listPrefix: "Liste",
                 liveBoard: "Live-Orderbuch",
-                depth: "Tiefe: 30x30",
+                depth: "Tiefe: 20x20",
                 price: "Preis ($)",
                 amount: "Menge",
                 total: "Gesamt ($)",
@@ -620,7 +620,7 @@
                 mainList: "메인 리스트",
                 listPrefix: "리스트",
                 liveBoard: "실시간 호가창",
-                depth: "깊이: 30x30",
+                depth: "깊이: 20x20",
                 price: "가격 ($)",
                 amount: "수량",
                 total: "총액 ($)",
@@ -654,7 +654,7 @@
                 mainList: "Mi Lista",
                 listPrefix: "Lista",
                 liveBoard: "Libro de Órdenes",
-                depth: "Profundidad: 30x30",
+                depth: "Profundidad: 20x20",
                 price: "Precio ($)",
                 amount: "Cantidad",
                 total: "Total ($)",
@@ -688,7 +688,7 @@
                 mainList: "قائمتي الرئيسية",
                 listPrefix: "قائمة",
                 liveBoard: "سجل الطلبات المباشر",
-                depth: "العمق: 30x30",
+                depth: "العمق: 20x20",
                 price: "السعر ($)",
                 amount: "الكمية",
                 total: "الإجمالي ($)",
@@ -722,7 +722,7 @@
                 mainList: "Liste Principale",
                 listPrefix: "Liste",
                 liveBoard: "Carnet d'ordres",
-                depth: "Profondeur: 30x30",
+                depth: "Profondeur: 20x20",
                 price: "Prix ($)",
                 amount: "Quantité",
                 total: "Total ($)",
@@ -1030,7 +1030,7 @@
             if (depthWs) depthWs.close();
             if (!selectedSymbol) return;
 
-            depthWs = new WebSocket(`wss://stream.binance.com:9443/ws/${selectedSymbol}@depth@100ms`);
+            depthWs = new WebSocket(`wss://stream.binance.com:9443/ws/${selectedSymbol}@depth20@100ms`);
 
             depthWs.onmessage = (event) => {
                 const data = JSON.parse(event.data);
@@ -1048,7 +1048,7 @@
             let totalAskVol = 0;
             let totalBidVol = 0;
 
-            const askList = asks.slice(0, 100).map(item => {
+            const askList = asks.slice(0, 20).map(item => {
                 const price = parseFloat(item[0]);
                 const amount = parseFloat(item[1]);
                 const total = price * amount;
@@ -1056,7 +1056,7 @@
                 return { price, amount, total };
             });
 
-            const bidList = bids.slice(0, 100).map(item => {
+            const bidList = bids.slice(0, 20).map(item => {
                 const price = parseFloat(item[0]);
                 const amount = parseFloat(item[1]);
                 const total = price * amount;
@@ -1092,8 +1092,10 @@
             }).join('');
 
             if (!isInitialAsksScrollDone && asksContainer) {
-                asksContainer.scrollTop = asksContainer.scrollHeight;
-                isInitialAsksScrollDone = true;
+                setTimeout(() => {
+                    asksContainer.scrollTop = asksContainer.scrollHeight;
+                    isInitialAsksScrollDone = true;
+                }, 100);
             }
 
             const bestAsk = askList[0] ? askList[0].price : 0;
