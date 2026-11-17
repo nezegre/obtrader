@@ -1259,7 +1259,7 @@
             const row = (item, color) => {
                 const pct = Math.min(100, item.total / maxTotal * 100).toFixed(1);
                 const whale = alarms[selectedKey()] && alarms[selectedKey()].volumeThreshold && item.total >= alarms[selectedKey()].volumeThreshold;
-                return `<tr style="background: linear-gradient(to left, ${color} ${pct}%, transparent ${pct}%);${whale ? 'outline:1px solid #f0b90b;' : ''}"><td class="price">${fmtPrice(item.price, dec)}</td><td>${item.amount < 10 ? item.amount.toFixed(4) : item.amount.toFixed(2)}</td><td>${Math.round(item.total).toLocaleString()}</td></tr>`;
+                return `<tr style="background: linear-gradient(to left, ${color} ${pct}%, transparent ${pct}%);${whale ? 'outline:1px solid #f0b90b;' : ''}"><td class="price">${fmtPrice(item.price, dec)}</td><td>${item.amount < 10 ? item.amount.toFixed(4) : item.amount.toFixed(2)}</td><td>${Math.round(item.total).toLocaleString('en-US')}</td></tr>`;
             };
             asksTable.innerHTML = askList.slice().reverse().map(i => row(i, 'rgba(246, 70, 93, 0.4)')).join('');
             bidsTable.innerHTML = bidList.map(i => row(i, 'rgba(14, 203, 129, 0.4)')).join('');
@@ -1270,7 +1270,7 @@
 
             const t = i18n[currentLang];
             const depthEl = document.getElementById('lblDepth');
-            if (depthEl) depthEl.innerText = `${t.depth.split(':')[0]}: ${book.bids.size.toLocaleString()}×${book.asks.size.toLocaleString()}`;
+            if (depthEl) depthEl.innerText = `${t.depth.split(':')[0]}: ${book.bids.size.toLocaleString('en-US')}×${book.asks.size.toLocaleString('en-US')}`;
 
             const spread = Math.abs(bestAsk - bestBid);
             if (mid > 0) {
@@ -1291,8 +1291,8 @@
             if (alarms[k] && alarms[k].volumeThreshold) {
                 const threshold = alarms[k].volumeThreshold, now = Date.now();
                 const fresh = (side, item) => { const kk = k + side + item.price; if (whaleSeen[kk] && now - whaleSeen[kk] < 60000) return false; whaleSeen[kk] = now; return true; };
-                askList.forEach(item => { if (item.total >= threshold && fresh('s', item)) alarmNotify(t.toastWhaleSell.replace('{sym}', keyLabel(k)).replace('{vol}', Math.round(item.total).toLocaleString()) + ' @ ' + fmtPrice(item.price, dec), 'whale-' + k); });
-                bidList.forEach(item => { if (item.total >= threshold && fresh('b', item)) alarmNotify(t.toastWhaleBuy.replace('{sym}', keyLabel(k)).replace('{vol}', Math.round(item.total).toLocaleString()) + ' @ ' + fmtPrice(item.price, dec), 'whale-' + k); });
+                askList.forEach(item => { if (item.total >= threshold && fresh('s', item)) alarmNotify(t.toastWhaleSell.replace('{sym}', keyLabel(k)).replace('{vol}', Math.round(item.total).toLocaleString('en-US')) + ' @ ' + fmtPrice(item.price, dec), 'whale-' + k); });
+                bidList.forEach(item => { if (item.total >= threshold && fresh('b', item)) alarmNotify(t.toastWhaleBuy.replace('{sym}', keyLabel(k)).replace('{vol}', Math.round(item.total).toLocaleString('en-US')) + ' @ ' + fmtPrice(item.price, dec), 'whale-' + k); });
             }
         }
         function selectedKey() { return ik(selectedExchange, selectedSymbol); }
