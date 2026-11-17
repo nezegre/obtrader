@@ -321,6 +321,8 @@
         .modal-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 15px; }
         .btn { padding: 10px 16px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; font-size: 12px; }
         .btn-add { background: #16f7d1; color: #000000; }
+        .btn-tg { background: #229ED9; color: #fff; width: 100%; margin-top: 10px; font-size: 13px; }
+        .tg-hint { font-size: 10px; color: #848e9c; text-align: center; margin-top: 5px; }
         .btn-close { background: #363c4e; color: #fff; }
 
         .remove-coin-link { display: block; text-align: center; color: #f6465d; font-size: 11px; margin-top: 15px; cursor: pointer; text-decoration: underline; }
@@ -484,6 +486,9 @@
                 <button class="btn btn-add" onclick="saveAlarmSettings()" id="btnSaveAlarm">Save Alarm</button>
             </div>
 
+            <button class="btn btn-tg" onclick="sendToTelegram()" id="btnTelegram">📲 Telegram'da 7/24 alarm kur</button>
+            <div class="tg-hint" id="lblTgHint">Uygulama kapalıyken de bildirim gelir.</div>
+
             <span class="remove-coin-link" onclick="removeCurrentSymbol()" id="btnRemoveCoin">Remove this coin pair from list</span>
         </div>
     </div>
@@ -520,6 +525,9 @@
                 toastWhaleBuy: "🚨 WHALE ORDER: ${vol} BUY wall on {sym}!",
                 toastRemoved: "{sym} removed from list.",
                 toastSaved: "Alarm saved for {sym}.",
+                tgBtn: "📲 Set 24/7 alarm on Telegram",
+                tgHint: "Works even when the app is closed.",
+                tgNeed: "Enter a target price or whale volume first.",
                 buyText: "Buy",
                 sellText: "Sell",
                 notFound: "Coin not found"
@@ -588,6 +596,9 @@
                 toastWhaleBuy: "🚨 BALİNA EMRİ: {sym} tahtasında ${vol} ALIM duvarı belirdi!",
                 toastRemoved: "{sym} listeden kaldırıldı.",
                 toastSaved: "{sym} için alarm kaydedildi.",
+                tgBtn: "📲 Telegram'da 7/24 alarm kur",
+                tgHint: "Uygulama kapalıyken de bildirim gelir.",
+                tgNeed: "Önce hedef fiyat veya balina tutarı gir.",
                 buyText: "Alım",
                 sellText: "Satım",
                 notFound: "Coin bulunamadı"
@@ -862,6 +873,8 @@
             document.getElementById('lblActiveAlarms').innerText = t.activeAlarms;
             document.getElementById('btnClose').innerText = t.close;
             document.getElementById('btnSaveAlarm').innerText = t.saveAlarm;
+            document.getElementById('btnTelegram').innerText = t.tgBtn || i18n.en.tgBtn;
+            document.getElementById('lblTgHint').innerText = t.tgHint || i18n.en.tgHint;
             document.getElementById('btnRemoveCoin').innerText = t.removeCoin;
 
             lists.forEach((l, idx) => {
@@ -1518,6 +1531,25 @@
             }
 
             closeModal('alarmModal');
+        }
+
+        /* ===== TELEGRAM 7/24 ALARM ===== */
+        const TG_BOT = 'ObTraderAlarmBot';
+        function sendToTelegram() {
+            const t = i18n[currentLang];
+            const key = targetAlarmSymbol;
+            if (!key) return;
+            const price = parseFloat(document.getElementById('alarmTargetPrice').value) || 0;
+            const whale = parseFloat(document.getElementById('alarmVolumeThreshold').value) || 0;
+            if (!price && !whale) { showToast(t.tgNeed || i18n.en.tgNeed); return; }
+            const i = key.indexOf('-'), ex = key.slice(0, i), base = baseOf(key.slice(i + 1));
+            const botEx = ['binance', 'okx', 'coinbase'].includes(ex) ? ex : 'binance';
+            const cur = lastPrices[key];
+            const op = (cur && price && price < cur) ? 'l' : 'g';
+            const n = v => String(+v.toFixed(8)).replace('.', 'd');
+            const payload = `${botEx}_${base}_${op}_${n(price)}_${n(whale)}`.slice(0, 64);
+            saveAlarmSettings();
+            window.open(`https://t.me/${TG_BOT}?start=${payload}`, '_blank');
         }
 
         function removeCurrentSymbol() {

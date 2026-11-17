@@ -48,7 +48,7 @@ function with_db(callable $fn) {
 }
 
 function fmt(float $n): string {
-    if ($n >= 1) return number_format($n, $n >= 100 ? 0 : 2, '.', ',');
+    if ($n >= 1) return number_format($n, ($n >= 100 && floor($n) == $n) ? 0 : 2, '.', ',');
     return rtrim(rtrim(sprintf('%.6f', $n), '0'), '.');
 }
 function opx(string $op): string { return $op === '>' ? '&gt;' : '&lt;'; }
