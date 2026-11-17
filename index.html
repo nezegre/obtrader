@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ObTrader Live</title>
+    <meta name="description" content="ObTrader — live crypto order book, whale order alerts and price alarms.">
+    <meta name="theme-color" content="#000000">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         body { background-color: #000000; color: #eaecef; padding: 10px; -webkit-user-select: none; }
@@ -52,7 +59,7 @@
         /* WATCH GRID */
         .watch-grid { 
             display: grid; 
-            grid-template-columns: repeat(2, 1fr); 
+            grid-template-columns: repeat(2, minmax(0, 1fr)); 
             gap: 8px; 
             margin-bottom: 15px; 
         }
@@ -76,7 +83,10 @@
         .card.active { border-color: #16f7d1; }
         
         .card-header { display: flex; justify-content: space-between; align-items: center; }
-        .symbol-name { font-size: 13px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 4px; }
+        .symbol-name { font-size: 13px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden; white-space: nowrap; }
+        html, body { max-width: 100%; overflow-x: hidden; overscroll-behavior-x: none; }
+        .card { min-width: 0; }
+        .card-header { min-width: 0; gap: 4px; }
         .exchange-badge { font-size: 9px; background: rgba(255, 255, 255, 0.1); color: #848e9c; padding: 1px 4px; border-radius: 3px; }
         .header-right { display: flex; align-items: center; gap: 6px; }
         .change { font-size: 11px; font-weight: 600; }
@@ -372,7 +382,7 @@
         <div class="ob-drawer">
             <div class="ob-header">
                 <span id="activeSymbolTitle">BTC/USDT</span>
-                <span style="color: #848e9c; font-size: 11px;" id="lblDepth">Depth: 20x20</span>
+                <span style="display:flex;gap:8px;align-items:center"><span style="color: #848e9c; font-size: 11px;" id="lblDepth">Depth</span><select id="obGroup" onchange="onGroupChange(this.value)" title="Group" style="background:#1e2329;color:#eaecef;border:1px solid #2b313a;border-radius:4px;font-size:11px;padding:2px 4px"></select></span>
             </div>
             
             <table class="orderbook-table">
@@ -759,7 +769,7 @@
         if (!i18n[currentLang]) currentLang = 'en';
 
         // Desteklenen Borsalar
-        const supportedExchanges = ["BINANCE", "KUCOIN"];
+        const supportedExchanges = ["BINANCE", "OKX", "COINBASE", "KUCOIN", "BITFINEX"];
 
         let lists = [
             {
@@ -767,21 +777,67 @@
                 titleKey: 'mainList',
                 title: i18n[currentLang].mainList,
                 symbols: [
-                    { symbol: 'btcusdt', name: 'BTC/USDT', exchange: 'BINANCE' },
-                    { symbol: 'ethusdt', name: 'ETH/USDT', exchange: 'BINANCE' }
+                    { symbol: 'btcusdt', name: 'BTC/USD', exchange: 'COINBASE' },
+                    { symbol: 'ethusdt', name: 'ETH/USDT', exchange: 'BINANCE' },
+                    { symbol: 'paxgusdt', name: 'PAXG/USDT', exchange: 'BINANCE' }
                 ]
             }
         ];
 
         let activeListId = 'main';
         let selectedSymbol = 'btcusdt';
-        let selectedExchange = 'BINANCE';
+        let selectedExchange = 'COINBASE';
         let targetAlarmSymbol = '';
         let tickerWs, depthWs;
         let alarms = {};
         let lastPrices = {};
         let tvWidget = null;
         let isInitialAsksScrollDone = false;
+
+        /* KALICI DURUM (localStorage) */
+        const STORE_KEY = 'obtrader_state_v1';
+        try {
+            const saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+            if (saved && Array.isArray(saved.lists) && saved.lists.length) {
+                lists = saved.lists;
+                activeListId = lists.some(l => l.id === saved.activeListId) ? saved.activeListId : lists[0].id;
+                alarms = {};
+                Object.entries(saved.alarms || {}).forEach(([k, v]) => { alarms[k.includes('-') ? k : 'binance-' + k] = v; });
+                if (!urlParams.get('lang') && saved.lang && i18n[saved.lang]) currentLang = saved.lang;
+                const first = (lists.find(l => l.id === activeListId) || lists[0]).symbols[0];
+                if (first) { selectedSymbol = first.symbol; selectedExchange = first.exchange || 'BINANCE'; }
+            }
+        } catch (e) {}
+        let lastSavedState = '';
+        function persistState() {
+            try {
+                const st = JSON.stringify({ lists, activeListId, alarms, lang: currentLang });
+                if (st !== lastSavedState) { localStorage.setItem(STORE_KEY, st); lastSavedState = st; }
+            } catch (e) {}
+        }
+        setInterval(persistState, 1500);
+        window.addEventListener('pagehide', persistState);
+        document.addEventListener('visibilitychange', () => { if (document.hidden) persistState(); });
+
+        /* BİLDİRİMLER */
+        let swReg = null;
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').then(r => { swReg = r; }).catch(() => {});
+        }
+        function askNotifyPermission() {
+            try { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {}
+        }
+        const whaleSeen = {};
+        function alarmNotify(msg, tag) {
+            showToast(msg);
+            try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) {}
+            try {
+                if (!('Notification' in window) || Notification.permission !== 'granted') return;
+                const opts = { body: msg, icon: 'icons/icon-192.png', badge: 'icons/icon-192.png', tag: tag || 'obtrader', renotify: true };
+                if (swReg && swReg.showNotification) swReg.showNotification('ObTrader', opts);
+                else new Notification('ObTrader', opts);
+            } catch (e) {}
+        }
 
         function changeLanguage(lang) {
             currentLang = lang;
@@ -866,8 +922,9 @@
                 id: newId,
                 title: newTitle,
                 symbols: [
-                    { symbol: 'btcusdt', name: 'BTC/USDT', exchange: 'BINANCE' },
-                    { symbol: 'ethusdt', name: 'ETH/USDT', exchange: 'BINANCE' }
+                    { symbol: 'btcusdt', name: 'BTC/USD', exchange: 'COINBASE' },
+                    { symbol: 'ethusdt', name: 'ETH/USDT', exchange: 'BINANCE' },
+                    { symbol: 'paxgusdt', name: 'PAXG/USDT', exchange: 'BINANCE' }
                 ]
             });
 
@@ -902,8 +959,10 @@
 
             currentList.symbols.forEach(item => {
                 const card = document.createElement('div');
-                card.className = `card ${item.symbol === selectedSymbol ? 'active' : ''}`;
-                card.id = `card-${item.symbol}`;
+                const ex = item.exchange || 'BINANCE';
+                const key = ik(ex, item.symbol);
+                card.className = `card ${key === selectedKey() ? 'active' : ''}`;
+                card.id = `card-${key}`;
                 
                 card.onclick = (e) => {
                     if(!e.target.classList.contains('more-btn')) {
@@ -911,7 +970,7 @@
                     }
                 };
 
-                const hasAlarm = alarms[item.symbol] && (alarms[item.symbol].targetPrice || alarms[item.symbol].volumeThreshold);
+                const hasAlarm = alarms[key] && (alarms[key].targetPrice || alarms[key].volumeThreshold);
 
                 card.innerHTML = `
                     <div class="card-header">
@@ -920,12 +979,12 @@
                             <span class="exchange-badge">${item.exchange || 'BINANCE'}</span>
                         </div>
                         <div class="header-right">
-                            <div class="change" id="change-${item.symbol}">%0.00</div>
-                            <div class="more-btn ${hasAlarm ? 'has-alarm' : ''}" onclick="openAlarmModal('${item.symbol}', '${item.name}')">⋮</div>
+                            <div class="change" id="change-${key}">%0.00</div>
+                            <div class="more-btn ${hasAlarm ? 'has-alarm' : ''}" onclick="openAlarmModal('${key}', '${item.name}')">⋮</div>
                         </div>
                     </div>
                     <div class="card-body">
-                        <div class="price" id="price-${item.symbol}">--</div>
+                        <div class="price" id="price-${key}">${lastPrices[key] ? fmtPrice(lastPrices[key]) : '--'}</div>
                     </div>
                 `;
                 grid.appendChild(card);
@@ -940,53 +999,12 @@
             connectTickerStream();
         }
 
-        function connectTickerStream() {
-            if (tickerWs) tickerWs.close();
-            const currentList = getCurrentList();
-            if (!currentList || currentList.symbols.length === 0) return;
-
-            const streams = currentList.symbols.map(i => `${i.symbol}@ticker`).join('/');
-            tickerWs = new WebSocket(`wss://stream.binance.com:9443/ws/${streams}`);
-
-            tickerWs.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.s) {
-                    const sym = data.s.toLowerCase();
-                    const price = parseFloat(data.c);
-                    const change = parseFloat(data.P);
-
-                    const priceEl = document.getElementById(`price-${sym}`);
-                    const changeEl = document.getElementById(`change-${sym}`);
-
-                    if (priceEl && changeEl) {
-                        priceEl.innerText = price < 1 ? price.toFixed(6) : price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                        changeEl.innerText = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
-                        changeEl.className = `change ${change >= 0 ? 'up' : 'down'}`;
-                    }
-
-                    if (alarms[sym] && alarms[sym].targetPrice) {
-                        const target = alarms[sym].targetPrice;
-                        const prev = lastPrices[sym];
-                        if (prev && ((prev < target && price >= target) || (prev > target && price <= target))) {
-                            const msg = i18n[currentLang].toastPrice.replace('{sym}', sym.toUpperCase()).replace('{target}', target);
-                            showToast(msg);
-                            if (alarms[sym].mode === 'once') {
-                                delete alarms[sym].targetPrice;
-                                renderGrid();
-                            }
-                        }
-                    }
-                    lastPrices[sym] = price;
-                }
-            };
-        }
-
         function selectSymbol(sym, name, exchange = 'BINANCE') {
             selectedSymbol = sym;
             selectedExchange = exchange;
             isInitialAsksScrollDone = false;
             document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
-            const card = document.getElementById(`card-${sym}`);
+            const card = document.getElementById(`card-${ik(exchange, sym)}`);
             if (card) card.classList.add('active');
 
             updateLiveBoardTitle(name);
@@ -1002,13 +1020,295 @@
             document.getElementById('chartSymbolTitle').innerText = `${displayName} Chart (${selectedExchange})`;
         }
 
+        /* ===== BORSA KATMANI (5 borsa) ===== */
+        const USD_QUOTE = { COINBASE: 1, BITFINEX: 1 };
+        function baseOf(sym) { return String(sym).toUpperCase().replace(/[-_/]/g, '').replace(/USDT$/, '').replace(/USD$/, ''); }
+        function pairName(sym, ex) { return baseOf(sym) + (USD_QUOTE[ex] ? '/USD' : '/USDT'); }
+        function ik(ex, sym) { return (ex || 'BINANCE').toLowerCase() + '-' + sym; }
+        function exSym(ex, sym) {
+            const b = baseOf(sym);
+            switch (ex) {
+                case 'KUCOIN': case 'OKX': return b + '-USDT';
+                case 'COINBASE': return b + '-USD';
+                case 'BITFINEX': return 't' + (b.length > 3 ? b + ':USD' : b + 'USD');
+                default: return b + 'USDT';
+            }
+        }
+        function fromExSym(s) { return baseOf(String(s).replace(/^t/, '').replace(':', '')).toLowerCase() + 'usdt'; }
+        function tvSymbol(ex, sym) { return ex + ':' + baseOf(sym) + (USD_QUOTE[ex] ? 'USD' : 'USDT'); }
+        function keyLabel(k) { const i = k.indexOf('-'); const ex = k.slice(0, i).toUpperCase(); return pairName(k.slice(i + 1), ex) + ' (' + ex + ')'; }
+        const KUCOIN_TOKEN_URL = 'https://cryptoverifly.com/api/kc-token.php';
+        async function kucoinSocketUrl() {
+            const j = await (await fetch(KUCOIN_TOKEN_URL)).json();
+            const s = j.data.instanceServers[0];
+            return { url: `${s.endpoint}?token=${j.data.token}&connectId=${Date.now()}`, ping: s.pingInterval || 18000 };
+        }
+        function fmtPrice(p, dec) {
+            if (dec == null) dec = p < 1 ? 6 : p < 100 ? 4 : 2;
+            return p.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+        }
+
+        /* ===== FİYAT AKIŞLARI (tüm listeler + alarmlar) ===== */
+        let tickerSockets = [];
+        let tickerTimers = [];
+        function onTick(ex, sym, price, change) {
+            if (!isFinite(price)) return;
+            const k = ik(ex, sym);
+            const priceEl = document.getElementById(`price-${k}`);
+            const changeEl = document.getElementById(`change-${k}`);
+            if (priceEl) priceEl.innerText = fmtPrice(price);
+            if (changeEl && isFinite(change)) {
+                changeEl.innerText = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+                changeEl.className = `change ${change >= 0 ? 'up' : 'down'}`;
+            }
+            const a = alarms[k];
+            if (a && a.targetPrice) {
+                const target = a.targetPrice, prev = lastPrices[k];
+                if (prev && ((prev < target && price >= target) || (prev > target && price <= target))) {
+                    const msg = i18n[currentLang].toastPrice.replace('{sym}', keyLabel(k)).replace('{target}', target);
+                    alarmNotify(msg, 'price-' + k);
+                    if (a.mode === 'once') { delete a.targetPrice; renderGrid(); }
+                }
+            }
+            lastPrices[k] = price;
+        }
+        function wantedTickers() {
+            const m = {};
+            const add = (ex, sym) => { ex = ex || 'BINANCE'; (m[ex] = m[ex] || new Set()).add(sym); };
+            lists.forEach(l => l.symbols.forEach(i => add(i.exchange, i.symbol)));
+            Object.keys(alarms).forEach(k => { if (alarms[k] && alarms[k].targetPrice) { const i = k.indexOf('-'); add(k.slice(0, i).toUpperCase(), k.slice(i + 1)); } });
+            return m;
+        }
+        function connectTickerStream() {
+            tickerSockets.forEach(w => { try { w.onclose = null; w.close(); } catch (e) {} });
+            tickerTimers.forEach(clearInterval);
+            tickerSockets = []; tickerTimers = [];
+            const want = wantedTickers();
+            Object.entries(want).forEach(([ex, set]) => { const syms = [...set]; if (syms.length) openTicker(ex, syms); });
+        }
+        function keepAlive(ws, fn, ms) { const t = setInterval(() => { if (ws.readyState === 1) fn(); }, ms); tickerTimers.push(t); }
+        async function openTicker(ex, syms) {
+            try {
+                if (ex === 'BINANCE') {
+                    const ws = new WebSocket(`wss://stream.binance.com:9443/stream?streams=${syms.map(s => exSym(ex, s).toLowerCase() + '@ticker').join('/')}`);
+                    tickerSockets.push(ws);
+                    ws.onmessage = e => { const d = JSON.parse(e.data).data; if (d && d.s) onTick(ex, d.s.toLowerCase(), +d.c, +d.P); };
+                } else if (ex === 'OKX') {
+                    const ws = new WebSocket('wss://ws.okx.com:8443/ws/v5/public');
+                    tickerSockets.push(ws);
+                    ws.onopen = () => ws.send(JSON.stringify({ op: 'subscribe', args: syms.map(s => ({ channel: 'tickers', instId: exSym(ex, s) })) }));
+                    ws.onmessage = e => { if (e.data === 'pong') return; const j = JSON.parse(e.data); (j.data || []).forEach(d => onTick(ex, fromExSym(d.instId), +d.last, (d.last / d.open24h - 1) * 100)); };
+                    keepAlive(ws, () => ws.send('ping'), 25000);
+                } else if (ex === 'COINBASE') {
+                    const ws = new WebSocket('wss://ws-feed.exchange.coinbase.com');
+                    tickerSockets.push(ws);
+                    ws.onopen = () => ws.send(JSON.stringify({ type: 'subscribe', product_ids: syms.map(s => exSym(ex, s)), channels: ['ticker'] }));
+                    ws.onmessage = e => { const d = JSON.parse(e.data); if (d.type === 'ticker') onTick(ex, fromExSym(d.product_id), +d.price, (d.price / d.open_24h - 1) * 100); };
+                } else if (ex === 'BITFINEX') {
+                    const ws = new WebSocket('wss://api-pub.bitfinex.com/ws/2');
+                    tickerSockets.push(ws);
+                    const chans = {};
+                    ws.onopen = () => syms.forEach(s => ws.send(JSON.stringify({ event: 'subscribe', channel: 'ticker', symbol: exSym(ex, s) })));
+                    ws.onmessage = e => {
+                        const d = JSON.parse(e.data);
+                        if (d.event === 'subscribed') { chans[d.chanId] = fromExSym(d.symbol); return; }
+                        if (Array.isArray(d) && Array.isArray(d[1]) && chans[d[0]]) onTick(ex, chans[d[0]], +d[1][6], d[1][5] * 100);
+                    };
+                } else if (ex === 'KUCOIN') {
+                    const k = await kucoinSocketUrl();
+                    const ws = new WebSocket(k.url);
+                    tickerSockets.push(ws);
+                    ws.onmessage = e => {
+                        const j = JSON.parse(e.data);
+                        if (j.type === 'welcome') ws.send(JSON.stringify({ id: Date.now(), type: 'subscribe', topic: '/market/snapshot:' + syms.map(s => exSym(ex, s)).join(','), response: true }));
+                        else if (j.type === 'message' && j.data && j.data.data) { const d = j.data.data; onTick(ex, fromExSym(d.symbol), +d.lastTradedPrice, d.changeRate * 100); }
+                    };
+                    keepAlive(ws, () => ws.send(JSON.stringify({ id: Date.now(), type: 'ping' })), k.ping);
+                }
+            } catch (err) { console.warn('ticker', ex, err); }
+        }
+
+        /* ===== EMİR DEFTERİ (tam derinlik) ===== */
+        let book = { bids: new Map(), asks: new Map() };
+        let bookDirty = false, bookGen = 0, bookTimer = null;
+        let groupStep = 0, groupAuto = true;
+        const MAX_ROWS = 400;
+        function resetBook() { book = { bids: new Map(), asks: new Map() }; bookDirty = true; }
+        function applyLevels(side, levels) {
+            const m = book[side];
+            levels.forEach(l => { const p = +l[0], q = +l[1]; if (q === 0) m.delete(p); else m.set(p, q); });
+            bookDirty = true;
+        }
+        function niceSteps(mid) {
+            const out = [];
+            for (let e = -8; e <= 5; e++) [1, 2, 5].forEach(m => { const s = m * Math.pow(10, e); if (s >= mid * 2e-6 && s <= mid * 0.02) out.push(+s.toPrecision(3)); });
+            return out.slice(0, 7);
+        }
+        function updateGroupSelect(mid) {
+            const sel = document.getElementById('obGroup');
+            if (!sel || !mid) return;
+            const steps = niceSteps(mid);
+            const sig = steps.join(',');
+            if (sel.dataset.sig !== sig) {
+                sel.dataset.sig = sig;
+                sel.innerHTML = steps.map(s => `<option value="${s}">${s}</option>`).join('');
+                if (groupAuto || !steps.includes(groupStep)) groupStep = steps[Math.min(1, steps.length - 1)];
+                sel.value = String(groupStep);
+            }
+        }
+        function onGroupChange(v) { groupStep = +v; groupAuto = false; bookDirty = true; isInitialAsksScrollDone = false; }
+
+        function connectDepthStream() {
+            const gen = ++bookGen;
+            if (depthWs) { try { depthWs.onclose = null; depthWs.close(); } catch (e) {} }
+            if (bookTimer) clearInterval(bookTimer);
+            resetBook();
+            groupAuto = true;
+            const sel = document.getElementById('obGroup'); if (sel) sel.dataset.sig = '';
+            if (!selectedSymbol) return;
+            const ex = selectedExchange, s = exSym(ex, selectedSymbol);
+            bookTimer = setInterval(() => { if (bookDirty && gen === bookGen) { bookDirty = false; renderOrderBook(); } }, 400);
+            const live = () => gen === bookGen;
+            try {
+                if (ex === 'BINANCE') {
+                    let ready = false, lastId = 0, buf = [];
+                    const ws = depthWs = new WebSocket(`wss://stream.binance.com:9443/ws/${s.toLowerCase()}@depth@100ms`);
+                    const snap = async () => {
+                        ready = false;
+                        const j = await (await fetch(`https://api.binance.com/api/v3/depth?symbol=${s}&limit=5000`)).json();
+                        if (!live()) return;
+                        resetBook(); applyLevels('bids', j.bids); applyLevels('asks', j.asks); lastId = j.lastUpdateId;
+                        buf.filter(ev => ev.u > lastId).forEach(ev => { applyLevels('bids', ev.b); applyLevels('asks', ev.a); lastId = ev.u; });
+                        buf = []; ready = true;
+                    };
+                    ws.onopen = snap;
+                    ws.onmessage = e => {
+                        if (!live()) return;
+                        const ev = JSON.parse(e.data);
+                        if (!ready) { buf.push(ev); return; }
+                        if (ev.u <= lastId) return;
+                        if (ev.U > lastId + 1) { buf = [ev]; snap(); return; }
+                        applyLevels('bids', ev.b); applyLevels('asks', ev.a); lastId = ev.u;
+                    };
+                } else if (ex === 'OKX') {
+                    const ws = depthWs = new WebSocket('wss://ws.okx.com:8443/ws/v5/public');
+                    ws.onopen = () => ws.send(JSON.stringify({ op: 'subscribe', args: [{ channel: 'books', instId: s }] }));
+                    ws.onmessage = e => {
+                        if (!live() || e.data === 'pong') return;
+                        const j = JSON.parse(e.data); if (!j.data) return;
+                        const d = j.data[0]; if (j.action === 'snapshot') resetBook();
+                        applyLevels('bids', d.bids); applyLevels('asks', d.asks);
+                    };
+                    const t = setInterval(() => { if (!live()) return clearInterval(t); if (ws.readyState === 1) ws.send('ping'); }, 25000);
+                } else if (ex === 'COINBASE') {
+                    const ws = depthWs = new WebSocket('wss://ws-feed.exchange.coinbase.com');
+                    ws.onopen = () => ws.send(JSON.stringify({ type: 'subscribe', product_ids: [s], channels: ['level2_batch'] }));
+                    ws.onmessage = e => {
+                        if (!live()) return;
+                        const d = JSON.parse(e.data);
+                        if (d.type === 'snapshot') { resetBook(); applyLevels('bids', d.bids); applyLevels('asks', d.asks); }
+                        else if (d.type === 'l2update') d.changes.forEach(c => applyLevels(c[0] === 'buy' ? 'bids' : 'asks', [[c[1], c[2]]]));
+                    };
+                } else if (ex === 'BITFINEX') {
+                    const ws = depthWs = new WebSocket('wss://api-pub.bitfinex.com/ws/2');
+                    let chan = null;
+                    const put = r => { const p = r[0], c = r[1], a = r[2]; const side = a > 0 ? 'bids' : 'asks'; if (c === 0) book[side].delete(p); else book[side].set(p, Math.abs(a)); bookDirty = true; };
+                    ws.onopen = () => ws.send(JSON.stringify({ event: 'subscribe', channel: 'book', symbol: s, prec: 'P0', freq: 'F0', len: '250' }));
+                    ws.onmessage = e => {
+                        if (!live()) return;
+                        const d = JSON.parse(e.data);
+                        if (d.event === 'subscribed') { chan = d.chanId; return; }
+                        if (!Array.isArray(d) || d[0] !== chan || d[1] === 'hb') return;
+                        if (Array.isArray(d[1][0])) { resetBook(); d[1].forEach(put); } else put(d[1]);
+                    };
+                } else if (ex === 'KUCOIN') {
+                    kucoinSocketUrl().then(k => {
+                        if (!live()) return;
+                        const ws = depthWs = new WebSocket(k.url);
+                        ws.onmessage = e => {
+                            if (!live()) return;
+                            const j = JSON.parse(e.data);
+                            if (j.type === 'welcome') ws.send(JSON.stringify({ id: Date.now(), type: 'subscribe', topic: '/spotMarket/level2Depth50:' + s, response: true }));
+                            else if (j.type === 'message' && j.data) { resetBook(); applyLevels('bids', j.data.bids); applyLevels('asks', j.data.asks); }
+                        };
+                        const t = setInterval(() => { if (!live()) return clearInterval(t); if (ws.readyState === 1) ws.send(JSON.stringify({ id: Date.now(), type: 'ping' })); }, k.ping);
+                    }).catch(err => console.warn('kucoin', err));
+                }
+            } catch (err) { console.warn('depth', ex, err); }
+        }
+
+        function groupSide(m, step, up) {
+            const g = new Map();
+            m.forEach((q, p) => { const gp = +((up ? Math.ceil(p / step - 1e-9) : Math.floor(p / step + 1e-9)) * step).toPrecision(12); g.set(gp, (g.get(gp) || 0) + q); });
+            return g;
+        }
+        function renderOrderBook() {
+            const asksTable = document.getElementById('asksTable');
+            const bidsTable = document.getElementById('bidsTable');
+            const asksContainer = document.getElementById('asksContainer');
+            if (!book.asks.size && !book.bids.size) return;
+
+            let bestAsk = Infinity, bestBid = 0;
+            book.asks.forEach((q, p) => { if (p < bestAsk) bestAsk = p; });
+            book.bids.forEach((q, p) => { if (p > bestBid) bestBid = p; });
+            if (!isFinite(bestAsk)) bestAsk = bestBid;
+            const mid = bestBid ? (bestAsk + bestBid) / 2 : bestAsk;
+            updateGroupSelect(mid);
+            const step = groupStep || niceSteps(mid)[0] || 0.01;
+            const dec = Math.max(0, Math.min(8, -Math.floor(Math.log10(step) + 1e-9)));
+
+            const askList = [...groupSide(book.asks, step, true)].sort((a, b) => a[0] - b[0]).slice(0, MAX_ROWS).map(([price, amount]) => ({ price, amount, total: price * amount }));
+            const bidList = [...groupSide(book.bids, step, false)].sort((a, b) => b[0] - a[0]).slice(0, MAX_ROWS).map(([price, amount]) => ({ price, amount, total: price * amount }));
+
+            const maxTotal = Math.max(1, ...askList.map(a => a.total), ...bidList.map(b => b.total));
+            const row = (item, color) => {
+                const pct = Math.min(100, item.total / maxTotal * 100).toFixed(1);
+                const whale = alarms[selectedKey()] && alarms[selectedKey()].volumeThreshold && item.total >= alarms[selectedKey()].volumeThreshold;
+                return `<tr style="background: linear-gradient(to left, ${color} ${pct}%, transparent ${pct}%);${whale ? 'outline:1px solid #f0b90b;' : ''}"><td class="price">${fmtPrice(item.price, dec)}</td><td>${item.amount < 10 ? item.amount.toFixed(4) : item.amount.toFixed(2)}</td><td>${Math.round(item.total).toLocaleString('en-US')}</td></tr>`;
+            };
+            asksTable.innerHTML = askList.slice().reverse().map(i => row(i, 'rgba(246, 70, 93, 0.4)')).join('');
+            bidsTable.innerHTML = bidList.map(i => row(i, 'rgba(14, 203, 129, 0.4)')).join('');
+
+            if (!isInitialAsksScrollDone && asksContainer) {
+                setTimeout(() => { asksContainer.scrollTop = asksContainer.scrollHeight; isInitialAsksScrollDone = true; }, 50);
+            }
+
+            const t = i18n[currentLang];
+            const depthEl = document.getElementById('lblDepth');
+            if (depthEl) depthEl.innerText = `${t.depth.split(':')[0]}: ${book.bids.size.toLocaleString('en-US')}×${book.asks.size.toLocaleString('en-US')}`;
+
+            const spread = Math.abs(bestAsk - bestBid);
+            if (mid > 0) {
+                document.getElementById('midPrice').innerText = fmtPrice(mid);
+                document.getElementById('midPriceSpread').innerText = `Spread: ${spread < 1 ? spread.toFixed(4) : spread.toFixed(2)}`;
+            }
+
+            // Alış/satış oranı: orta fiyatın ±%2'si içindeki emirler
+            let bidVol = 0, askVol = 0;
+            book.bids.forEach((q, p) => { if (p >= mid * 0.98) bidVol += p * q; });
+            book.asks.forEach((q, p) => { if (p <= mid * 1.02) askVol += p * q; });
+            const buyRatio = bidVol + askVol > 0 ? bidVol / (bidVol + askVol) * 100 : 50;
+            document.getElementById('ratioBuyText').innerText = `${t.buyText} %${buyRatio.toFixed(1)}`;
+            document.getElementById('ratioSellText').innerText = `%${(100 - buyRatio).toFixed(1)} ${t.sellText}`;
+            document.getElementById('ratioBarFill').style.width = `${buyRatio}%`;
+
+            const k = selectedKey();
+            if (alarms[k] && alarms[k].volumeThreshold) {
+                const threshold = alarms[k].volumeThreshold, now = Date.now();
+                const fresh = (side, item) => { const kk = k + side + item.price; if (whaleSeen[kk] && now - whaleSeen[kk] < 60000) return false; whaleSeen[kk] = now; return true; };
+                askList.forEach(item => { if (item.total >= threshold && fresh('s', item)) alarmNotify(t.toastWhaleSell.replace('{sym}', keyLabel(k)).replace('{vol}', Math.round(item.total).toLocaleString('en-US')) + ' @ ' + fmtPrice(item.price, dec), 'whale-' + k); });
+                bidList.forEach(item => { if (item.total >= threshold && fresh('b', item)) alarmNotify(t.toastWhaleBuy.replace('{sym}', keyLabel(k)).replace('{vol}', Math.round(item.total).toLocaleString('en-US')) + ' @ ' + fmtPrice(item.price, dec), 'whale-' + k); });
+            }
+        }
+        function selectedKey() { return ik(selectedExchange, selectedSymbol); }
+
         /* TRADINGVIEW GRAFİK YÜKLEYİCİ */
         function renderTradingViewWidget() {
             if (!selectedSymbol) return;
             const container = document.getElementById('tvChartContainer');
             container.innerHTML = ''; 
 
-            const formattedSymbol = `${selectedExchange}:${selectedSymbol.toUpperCase()}`;
+            const formattedSymbol = tvSymbol(selectedExchange, selectedSymbol);
 
             new TradingView.widget({
                 "autosize": true,
@@ -1026,159 +1326,90 @@
             });
         }
 
-        function connectDepthStream() {
-            if (depthWs) depthWs.close();
-            if (!selectedSymbol) return;
-
-            depthWs = new WebSocket(`wss://stream.binance.com:9443/ws/${selectedSymbol}@depth20@100ms`);
-
-            depthWs.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.asks && data.bids) {
-                    renderOrderBook(data.asks, data.bids);
-                }
-            };
-        }
-
-        function renderOrderBook(asks, bids) {
-            const asksTable = document.getElementById('asksTable');
-            const bidsTable = document.getElementById('bidsTable');
-            const asksContainer = document.getElementById('asksContainer');
-
-            let totalAskVol = 0;
-            let totalBidVol = 0;
-
-            const askList = asks.slice(0, 20).map(item => {
-                const price = parseFloat(item[0]);
-                const amount = parseFloat(item[1]);
-                const total = price * amount;
-                totalAskVol += total;
-                return { price, amount, total };
-            });
-
-            const bidList = bids.slice(0, 20).map(item => {
-                const price = parseFloat(item[0]);
-                const amount = parseFloat(item[1]);
-                const total = price * amount;
-                totalBidVol += total;
-                return { price, amount, total };
-            });
-
-            const maxAskSingleTotal = Math.max(...askList.map(a => a.total), 1);
-            const maxBidSingleTotal = Math.max(...bidList.map(b => b.total), 1);
-
-            asksTable.innerHTML = askList.slice().reverse().map(item => {
-                const depthPercent = Math.min(100, (item.total / maxAskSingleTotal) * 100).toFixed(1);
-                const bgStyle = `background: linear-gradient(to left, rgba(246, 70, 93, 0.4) ${depthPercent}%, transparent ${depthPercent}%);`;
-                return `
-                    <tr style="${bgStyle}">
-                        <td class="price">${item.price < 1 ? item.price.toFixed(6) : item.price.toFixed(2)}</td>
-                        <td>${item.amount.toFixed(4)}</td>
-                        <td>${Math.round(item.total).toLocaleString()}</td>
-                    </tr>
-                `;
-            }).join('');
-
-            bidsTable.innerHTML = bidList.map(item => {
-                const depthPercent = Math.min(100, (item.total / maxBidSingleTotal) * 100).toFixed(1);
-                const bgStyle = `background: linear-gradient(to left, rgba(14, 203, 129, 0.4) ${depthPercent}%, transparent ${depthPercent}%);`;
-                return `
-                    <tr style="${bgStyle}">
-                        <td class="price">${item.price < 1 ? item.price.toFixed(6) : item.price.toFixed(2)}</td>
-                        <td>${item.amount.toFixed(4)}</td>
-                        <td>${Math.round(item.total).toLocaleString()}</td>
-                    </tr>
-                `;
-            }).join('');
-
-            if (!isInitialAsksScrollDone && asksContainer) {
-                setTimeout(() => {
-                    asksContainer.scrollTop = asksContainer.scrollHeight;
-                    isInitialAsksScrollDone = true;
-                }, 100);
-            }
-
-            const bestAsk = askList[0] ? askList[0].price : 0;
-            const bestBid = bidList[0] ? bidList[0].price : 0;
-            const midPrice = bestBid ? ((bestAsk + bestBid) / 2) : bestAsk;
-            const spread = Math.abs(bestAsk - bestBid);
-
-            const midPriceEl = document.getElementById('midPrice');
-            const midSpreadEl = document.getElementById('midPriceSpread');
-            
-            if (midPrice > 0) {
-                midPriceEl.innerText = midPrice < 1 ? midPrice.toFixed(6) : midPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                midSpreadEl.innerText = `Spread: ${spread < 1 ? spread.toFixed(4) : spread.toFixed(2)}`;
-            }
-
-            const grandTotalVol = totalAskVol + totalBidVol;
-            const buyRatio = grandTotalVol > 0 ? (totalBidVol / grandTotalVol) * 100 : 50;
-            const t = i18n[currentLang];
-
-            document.getElementById('ratioBuyText').innerText = `${t.buyText} %${buyRatio.toFixed(1)}`;
-            document.getElementById('ratioSellText').innerText = `%${(100 - buyRatio).toFixed(1)} ${t.sellText}`;
-            document.getElementById('ratioBarFill').style.width = `${buyRatio}%`;
-
-            if (alarms[selectedSymbol] && alarms[selectedSymbol].volumeThreshold) {
-                const threshold = alarms[selectedSymbol].volumeThreshold;
-                askList.forEach(item => {
-                    if (item.total >= threshold) {
-                        const msg = i18n[currentLang].toastWhaleSell.replace('{sym}', selectedSymbol.toUpperCase()).replace('{vol}', Math.round(item.total).toLocaleString());
-                        showToast(msg);
-                    }
-                });
-                bidList.forEach(item => {
-                    if (item.total >= threshold) {
-                        const msg = i18n[currentLang].toastWhaleBuy.replace('{sym}', selectedSymbol.toUpperCase()).replace('{vol}', Math.round(item.total).toLocaleString());
-                        showToast(msg);
-                    }
-                });
-            }
-        }
-
         /* DİNAMİK CANLI ARAMA / BORSA FİLTRELEME MANTIĞI */
         const newSymbolInput = document.getElementById('newSymbolInput');
         const searchResults = document.getElementById('searchResults');
 
-        newSymbolInput.addEventListener('input', function(e) {
-            const query = e.target.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+        /* BORSA PİYASA LİSTELERİ: sadece gerçekten listelenen pariteleri göster */
+        const MKT_KEY = 'obtrader_markets_v1';
+        const MARKETS = {};
+        let marketsLoading = null;
+        function loadMarkets() {
+            if (marketsLoading) return marketsLoading;
+            try {
+                const c = JSON.parse(localStorage.getItem(MKT_KEY) || 'null');
+                if (c && Date.now() - c.t < 6 * 3600e3) { for (const k in c.m) MARKETS[k] = new Set(c.m[k]); }
+            } catch (e) {}
+            const jobs = {
+                BINANCE: async () => (await (await fetch('https://api.binance.com/api/v3/exchangeInfo?permissions=SPOT&symbolStatus=TRADING')).json()).symbols.filter(x => x.quoteAsset === 'USDT').map(x => x.baseAsset),
+                OKX: async () => (await (await fetch('https://www.okx.com/api/v5/public/instruments?instType=SPOT')).json()).data.filter(x => x.quoteCcy === 'USDT' && x.state === 'live').map(x => x.baseCcy),
+                COINBASE: async () => (await (await fetch('https://api.exchange.coinbase.com/products')).json()).filter(x => x.quote_currency === 'USD' && !x.trading_disabled && x.status === 'online').map(x => x.base_currency),
+                KUCOIN: async () => (await (await fetch('https://cryptoverifly.com/api/markets.php?ex=kucoin')).json()),
+                BITFINEX: async () => (await (await fetch('https://cryptoverifly.com/api/markets.php?ex=bitfinex')).json())
+            };
+            marketsLoading = Promise.all(Object.entries(jobs).map(async ([ex, f]) => {
+                if (MARKETS[ex] && MARKETS[ex].size) return;
+                try { const arr = await f(); if (arr && arr.length) MARKETS[ex] = new Set(arr.map(b => String(b).toUpperCase())); } catch (e) {}
+            })).then(() => {
+                try { const m = {}; for (const k in MARKETS) m[k] = [...MARKETS[k]]; localStorage.setItem(MKT_KEY, JSON.stringify({ t: Date.now(), m })); } catch (e) {}
+                marketsLoading = null;
+            });
+            return marketsLoading;
+        }
+        // Bitfinex listesi alınamazsa tek tek canlı kontrol
+        const bfxCache = {};
+        function bitfinexHas(base) {
+            if (MARKETS.BITFINEX) return Promise.resolve(MARKETS.BITFINEX.has(base));
+            if (base in bfxCache) return Promise.resolve(bfxCache[base]);
+            return new Promise(res => {
+                let done = false; const fin = v => { if (done) return; done = true; bfxCache[base] = v; try { ws.close(); } catch (e) {} res(v); };
+                const ws = new WebSocket('wss://api-pub.bitfinex.com/ws/2');
+                ws.onopen = () => ws.send(JSON.stringify({ event: 'subscribe', channel: 'ticker', symbol: exSym('BITFINEX', base) }));
+                ws.onmessage = e => { const d = JSON.parse(e.data); if (d.event === 'subscribed') fin(true); else if (d.event === 'error') fin(false); };
+                ws.onerror = () => fin(false);
+                setTimeout(() => fin(false), 4000);
+            });
+        }
+
+        let searchSeq = 0;
+        newSymbolInput.addEventListener('focus', loadMarkets);
+        newSymbolInput.addEventListener('input', async function(e) {
+            const seq = ++searchSeq;
+            const query = baseOf(e.target.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, ''));
             searchResults.innerHTML = '';
+            if (!query) { searchResults.classList.remove('active'); return; }
+            searchResults.innerHTML = `<div class="no-result-item">…</div>`;
+            searchResults.classList.add('active');
+            await loadMarkets();
+            if (seq !== searchSeq) return;
 
-            if (!query) {
-                searchResults.classList.remove('active');
-                return;
-            }
-
-            // Arama ifadesine USDT ekleme kontrolü
-            let targetCoin = query;
-            if (!targetCoin.endsWith('USDT')) targetCoin += 'USDT';
+            // Eşleşen coinler: önce tam eşleşme, sonra baştan eşleşenler
+            const all = new Set();
+            Object.values(MARKETS).forEach(set => set.forEach(b => { if (b.startsWith(query)) all.add(b); }));
+            all.add(query);
+            const bases = [...all].sort((a, b) => (a === query ? -1 : b === query ? 1 : a.length - b.length || a.localeCompare(b))).slice(0, 8);
 
             const results = [];
-            supportedExchanges.forEach(ex => {
-                results.push({
-                    rawSymbol: targetCoin.toLowerCase(),
-                    displayName: `${targetCoin.replace('USDT', '')}/USDT`,
-                    exchange: ex
-                });
-            });
-
+            for (const b of bases) {
+                for (const ex of supportedExchanges) {
+                    let ok = MARKETS[ex] ? MARKETS[ex].has(b) : false;
+                    if (ex === 'BITFINEX' && !MARKETS.BITFINEX && b === query) ok = await bitfinexHas(b);
+                    if (ok) results.push({ rawSymbol: b.toLowerCase() + 'usdt', displayName: pairName(b, ex), exchange: ex });
+                }
+            }
+            if (seq !== searchSeq) return;
+            searchResults.innerHTML = '';
             if (results.length === 0) {
                 searchResults.innerHTML = `<div class="no-result-item">${i18n[currentLang].notFound}</div>`;
             } else {
-                results.forEach(res => {
+                results.slice(0, 40).forEach(res => {
                     const itemDiv = document.createElement('div');
                     itemDiv.className = 'search-item';
-                    itemDiv.innerHTML = `
-                        <span>${res.displayName}</span>
-                        <span class="search-exchange-tag">${res.exchange}</span>
-                    `;
-                    itemDiv.onclick = () => {
-                        addSelectedPair(res.rawSymbol, res.displayName, res.exchange);
-                    };
+                    itemDiv.innerHTML = `<span>${res.displayName}</span><span class="search-exchange-tag">${res.exchange}</span>`;
+                    itemDiv.onclick = () => addSelectedPair(res.rawSymbol, res.displayName, res.exchange);
                     searchResults.appendChild(itemDiv);
                 });
             }
-
             searchResults.classList.add('active');
         });
 
@@ -1214,6 +1445,8 @@
             const conf = alarms[sym] || {};
             document.getElementById('alarmTargetPrice').value = conf.targetPrice || '';
             document.getElementById('alarmVolumeThreshold').value = conf.volumeThreshold || '';
+            const modeEl = document.querySelector(`input[name="alarmMode"][value="${conf.mode || 'once'}"]`);
+            if (modeEl) modeEl.checked = true;
 
             renderActiveAlarmsList(sym);
             modal.style.display = 'flex';
@@ -1278,7 +1511,8 @@
                     mode: mode
                 };
                 
-                const msg = i18n[currentLang].toastSaved.replace('{sym}', targetAlarmSymbol.toUpperCase());
+                askNotifyPermission();
+                const msg = i18n[currentLang].toastSaved.replace('{sym}', keyLabel(targetAlarmSymbol));
                 showToast(msg);
                 renderGrid();
             }
@@ -1290,11 +1524,11 @@
             if (!targetAlarmSymbol) return;
 
             const currentList = getCurrentList();
-            currentList.symbols = currentList.symbols.filter(s => s.symbol !== targetAlarmSymbol);
+            currentList.symbols = currentList.symbols.filter(s => ik(s.exchange, s.symbol) !== targetAlarmSymbol);
             
             delete alarms[targetAlarmSymbol];
 
-            const msg = i18n[currentLang].toastRemoved.replace('{sym}', targetAlarmSymbol.toUpperCase());
+            const msg = i18n[currentLang].toastRemoved.replace('{sym}', keyLabel(targetAlarmSymbol));
             showToast(msg);
 
             closeModal('alarmModal');
@@ -1318,6 +1552,18 @@
 
         // Başlangıç Kurulumları
         changeLanguage(currentLang);
+        (function initBoard() {
+            const cur = getCurrentList() || lists[0];
+            const it = cur && (cur.symbols.find(s => s.symbol === selectedSymbol) || cur.symbols[0]);
+            if (it) selectSymbol(it.symbol, it.name, it.exchange || 'BINANCE');
+        })();
+        // Telefon uykudan / sekme arka plandan dönünce bağlantıları tazele
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) return;
+            if (!tickerSockets.length || tickerSockets.some(w => w.readyState > 1)) connectTickerStream();
+            if (selectedSymbol && (!depthWs || depthWs.readyState > 1)) connectDepthStream();
+        });
+        window.addEventListener('online', () => { connectTickerStream(); if (selectedSymbol) connectDepthStream(); });
     </script>
 </body>
 </html>
