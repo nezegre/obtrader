@@ -1,0 +1,6 @@
+server/php/config.php
+server/php/data.json
+server/php/hook.log
+server/php/.webhook_ok
+server/data.json
+server/.env
