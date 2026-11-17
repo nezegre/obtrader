@@ -774,15 +774,16 @@
                 titleKey: 'mainList',
                 title: i18n[currentLang].mainList,
                 symbols: [
-                    { symbol: 'btcusdt', name: 'BTC/USDT', exchange: 'BINANCE' },
-                    { symbol: 'ethusdt', name: 'ETH/USDT', exchange: 'BINANCE' }
+                    { symbol: 'btcusdt', name: 'BTC/USD', exchange: 'COINBASE' },
+                    { symbol: 'ethusdt', name: 'ETH/USDT', exchange: 'BINANCE' },
+                    { symbol: 'paxgusdt', name: 'PAXG/USDT', exchange: 'BINANCE' }
                 ]
             }
         ];
 
         let activeListId = 'main';
         let selectedSymbol = 'btcusdt';
-        let selectedExchange = 'BINANCE';
+        let selectedExchange = 'COINBASE';
         let targetAlarmSymbol = '';
         let tickerWs, depthWs;
         let alarms = {};
@@ -918,8 +919,9 @@
                 id: newId,
                 title: newTitle,
                 symbols: [
-                    { symbol: 'btcusdt', name: 'BTC/USDT', exchange: 'BINANCE' },
-                    { symbol: 'ethusdt', name: 'ETH/USDT', exchange: 'BINANCE' }
+                    { symbol: 'btcusdt', name: 'BTC/USD', exchange: 'COINBASE' },
+                    { symbol: 'ethusdt', name: 'ETH/USDT', exchange: 'BINANCE' },
+                    { symbol: 'paxgusdt', name: 'PAXG/USDT', exchange: 'BINANCE' }
                 ]
             });
 
