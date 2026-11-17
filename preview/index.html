@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ObTrader Live</title>
+    <meta name="description" content="ObTrader — live crypto order book, whale order alerts and price alarms.">
+    <meta name="theme-color" content="#000000">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: #000000; color: #eaecef; padding: 10px; -webkit-user-select: none; }
+        
+        /* Üst Header Bar */
+        .app-bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 5px; border-bottom: 1px solid #1e2329; margin-bottom: 10px; }
+        .app-title { font-size: 18px; font-weight: bold; color: #fff; display: flex; align-items: center; gap: 8px; }
+        .app-title span { color: #16f7d1; font-size: 10px; background: rgba(22, 247, 209, 0.15); padding: 2px 6px; border-radius: 4px; font-weight: 800; letter-spacing: 0.5px; }
+
+        /* Dil Seçici */
+        .lang-select {
+            background: #121418;
+            color: #16f7d1;
+            border: 1px solid rgba(22, 247, 209, 0.3);
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: bold;
+            outline: none;
+            cursor: pointer;
+        }
+
+        /* Kategori Sekmeleri */
+        .tabs-container { display: flex; align-items: center; border-bottom: 1px solid #1e2329; margin-bottom: 12px; gap: 8px; overflow-x: auto; }
+        .tabs { display: flex; gap: 12px; font-size: 13px; color: #848e9c; }
+        .tab { padding: 6px 10px; cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.2s; }
+        .tab.active { color: #fff; font-weight: bold; border-bottom-color: #16f7d1; }
+        
+        .btn-add-tab { 
+            background: rgba(22, 247, 209, 0.1); 
+            color: #16f7d1; 
+            border: 1px solid rgba(22, 247, 209, 0.3); 
+            width: 24px; 
+            height: 24px; 
+            border-radius: 4px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            cursor: pointer; 
+            font-size: 16px; 
+            font-weight: bold;
+            margin-bottom: 4px;
+            flex-shrink: 0;
+        }
+
+        /* WATCH GRID */
+        .watch-grid { 
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 8px; 
+            margin-bottom: 15px; 
+        }
+
+        @media (min-width: 768px) {
+            .watch-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+        }
+
+        .card { 
+            background: #121418; 
+            border: 1px solid #1e2329; 
+            border-radius: 8px; 
+            padding: 10px; 
+            position: relative; 
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 90px;
+        }
+        .card.active { border-color: #16f7d1; }
+        
+        .card-header { display: flex; justify-content: space-between; align-items: center; }
+        .symbol-name { font-size: 13px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 4px; }
+        .exchange-badge { font-size: 9px; background: rgba(255, 255, 255, 0.1); color: #848e9c; padding: 1px 4px; border-radius: 3px; }
+        .header-right { display: flex; align-items: center; gap: 6px; }
+        .change { font-size: 11px; font-weight: 600; }
+        
+        .up { color: #0ecb81; }
+        .down { color: #f6465d; }
+
+        .more-btn { 
+            color: #ffffff; 
+            font-size: 20px; 
+            font-weight: bold;
+            padding: 2px 6px; 
+            cursor: pointer; 
+            line-height: 1;
+            position: relative;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 4px;
+        }
+        .more-btn:hover {
+            background: rgba(22, 247, 209, 0.2);
+            color: #16f7d1;
+        }
+        .has-alarm::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 6px;
+            height: 6px;
+            background-color: #16f7d1;
+            border-radius: 50%;
+        }
+
+        .card-body { display: flex; justify-content: center; align-items: center; flex-grow: 1; }
+        .price { font-size: 16px; font-weight: 700; font-family: monospace; color: #fff; text-align: center; }
+
+        .card-add-box {
+            background: #0a0c0e;
+            border: 1px dashed #2b313a;
+            border-radius: 8px;
+            height: 90px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+        .card-add-icon { font-size: 28px; color: #16f7d1; font-weight: 300; }
+
+        /* YAN YANA YAPI / GRAFİK VE TAHTA KAPSAYICISI */
+        .chart-ob-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        @media (min-width: 900px) {
+            .chart-ob-wrapper {
+                flex-direction: row;
+                align-items: stretch;
+            }
+            .chart-container-box, .ob-drawer {
+                flex: 1;
+                margin-top: 0 !important;
+            }
+        }
+
+        .chart-container-box {
+            background: #121418;
+            border: 1px solid #1e2329;
+            border-radius: 8px;
+            padding: 10px;
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-header {
+            font-size: 13px;
+            font-weight: bold;
+            color: #16f7d1;
+            margin-bottom: 8px;
+            flex-shrink: 0;
+        }
+
+        .tradingview-widget-container {
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+            min-height: 300px;
+        }
+
+        /* CANLI TAHTA VE SCROLL DÜZENİ */
+        .ob-drawer { background: #121418; border: 1px solid #1e2329; padding: 12px; border-radius: 8px; }
+        .ob-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; font-weight: bold; color: #16f7d1; }
+        
+        .orderbook-table { width: 100%; border-collapse: collapse; font-family: monospace; font-size: 11px; table-layout: fixed; }
+        .orderbook-table th { color: #848e9c; font-weight: normal; padding-bottom: 6px; border-bottom: 1px solid #2b313a; text-align: right; }
+        .orderbook-table th:first-child { text-align: left; }
+        
+        .scrollable-table-container {
+            height: 260px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #2b313a transparent;
+        }
+        .scrollable-table-container::-webkit-scrollbar { width: 4px; }
+        .scrollable-table-container::-webkit-scrollbar-thumb { background: #2b313a; border-radius: 2px; }
+
+        .orderbook-table tr { height: 22px; position: relative; }
+        .orderbook-table td { padding: 3px 4px; text-align: right; font-weight: 500; position: relative; z-index: 2; }
+        
+        .asks td.price { color: #f6465d; text-align: left; font-weight: 600; }
+        .bids td.price { color: #0ecb81; text-align: left; font-weight: 600; }
+
+        /* Ortadaki Sabit Canlı Fiyat Bandı */
+        .mid-price-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            margin: 8px 0;
+            background: #090a0c;
+            border: 1px solid #2b313a;
+            border-radius: 6px;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+        .mid-price-val { 
+            font-size: 17px; 
+            font-weight: 800; 
+            font-family: monospace; 
+            color: #ffffff !important; 
+            letter-spacing: 0.5px;
+        }
+        .mid-price-sub { 
+            font-size: 11px; 
+            color: #848e9c; 
+            font-weight: 600;
+        }
+
+        /* Alım / Satım Oran Çizelgesi */
+        .ratio-container {
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 1px solid #1e2329;
+        }
+        .ratio-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        .ratio-buy-text { color: #0ecb81; }
+        .ratio-sell-text { color: #f6465d; }
+        .ratio-bar-bg {
+            height: 6px;
+            width: 100%;
+            background: #f6465d;
+            border-radius: 3px;
+            overflow: hidden;
+            display: flex;
+        }
+        .ratio-bar-fill {
+            height: 100%;
+            background: #0ecb81;
+            width: 50%;
+            transition: width 0.3s ease;
+        }
+
+        /* MODAL YAPISI & SEARCH DROPDOWN */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; z-index: 100; padding: 15px; }
+        .modal-content { background: #121418; padding: 20px; border-radius: 8px; width: 100%; max-width: 400px; border: 1px solid #2b313a; position: relative; }
+        .modal-close-x { position: absolute; top: 12px; right: 15px; color: #848e9c; font-size: 18px; cursor: pointer; font-weight: bold; }
+        .modal-content h3 { margin-bottom: 15px; color: #fff; font-size: 15px; border-bottom: 1px solid #2b313a; padding-bottom: 8px; padding-right: 25px; }
+        
+        .form-group { margin-bottom: 12px; position: relative; }
+        .form-group label { display: block; font-size: 11px; color: #848e9c; margin-bottom: 4px; }
+        .form-group input[type="text"], .form-group input[type="number"] { width: 100%; padding: 10px; background: #1a1d24; border: 1px solid #363c4e; color: #fff; border-radius: 4px; font-size: 13px; outline: none; transition: border-color 0.2s; }
+        .form-group input[type="text"]:focus { border-color: #16f7d1; }
+
+        /* ARAMA DROPDOWN BİLEŞENİ */
+        .search-results-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #1a1d24;
+            border: 1px solid #363c4e;
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            max-height: 180px;
+            overflow-y: auto;
+            z-index: 110;
+            display: none;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+        }
+        .search-results-dropdown.active { display: block; }
+        .search-item {
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: #fff;
+            cursor: pointer;
+            border-bottom: 1px solid #2b313a;
+        }
+        .search-item:last-child { border-bottom: none; }
+        .search-item:hover { background: rgba(22, 247, 209, 0.15); color: #16f7d1; }
+        .search-exchange-tag {
+            font-size: 10px;
+            padding: 2px 6px;
+            background: #2b313a;
+            color: #16f7d1;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        .no-result-item { padding: 10px; font-size: 12px; color: #848e9c; text-align: center; }
+
+        .radio-group { display: flex; gap: 15px; margin-top: 6px; }
+        .radio-option { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #eaecef; cursor: pointer; }
+        .radio-option input { accent-color: #16f7d1; }
+
+        .active-alarms-box { background: #000000; border: 1px solid #2b313a; border-radius: 4px; padding: 8px; margin-top: 10px; }
+        .active-alarms-title { font-size: 11px; color: #16f7d1; font-weight: bold; margin-bottom: 6px; }
+        .alarm-item { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #eaecef; background: #1a1d24; padding: 5px 8px; border-radius: 3px; margin-bottom: 4px; }
+        .alarm-delete { color: #f6465d; cursor: pointer; font-weight: bold; }
+
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 15px; }
+        .btn { padding: 10px 16px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; font-size: 12px; }
+        .btn-add { background: #16f7d1; color: #000000; }
+        .btn-close { background: #363c4e; color: #fff; }
+
+        .remove-coin-link { display: block; text-align: center; color: #f6465d; font-size: 11px; margin-top: 15px; cursor: pointer; text-decoration: underline; }
+
+        .toast-container { position: fixed; bottom: 20px; left: 15px; right: 15px; z-index: 200; pointer-events: none; }
+        .toast { background: #16f7d1; color: #000000; padding: 12px 16px; border-radius: 6px; font-weight: bold; font-size: 12px; margin-top: 8px; box-shadow: 0 4px 12px rgba(22, 247, 209, 0.3); animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    </style>
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+</head>
+<body>
+
+    <div class="app-bar">
+        <div class="app-title">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1254 1254" width="24" height="24">
+              <defs>
+                <linearGradient id="tGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#62C6CB"/>
+                  <stop offset="100%" stop-color="#58BFC5"/>
+                </linearGradient>
+                <linearGradient id="darkGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#29294F"/>
+                  <stop offset="100%" stop-color="#25254A"/>
+                </linearGradient>
+              </defs>
+              <path fill-rule="evenodd" clip-rule="evenodd" fill="url(#darkGradient)" d="M716 426 L715 835 L979 835 L1023 824 L1040 816 L1062 800 L1075 786 L1090 759 L1095 739 L1096 713 L1088 678 L1077 658 L1055 635 L1032 621 L1057 594 L1066 575 L1071 553 L1068 512 L1058 489 L1045 471 L1024 452 L1008 442 L983 432 L961 427 Z M787 673 L788 672 L789 673 L790 672 L959 672 L960 673 L966 673 L973 675 L986 683 L995 693 L999 701 L1002 711 L1001 724 L997 735 L993 741 L985 749 L974 756 L968 758 L964 758 L963 759 L913 759 L912 760 L899 760 L898 759 L866 759 L865 760 L835 760 L834 759 L809 759 L808 760 L803 760 L802 759 L801 760 L800 759 L788 759 L787 758 Z M787 508 L788 507 L821 507 L822 508 L833 508 L834 507 L941 507 L942 508 L948 508 L954 510 L966 517 L976 529 L979 535 L980 541 L981 542 L981 560 L980 561 L980 564 L976 573 L966 585 L953 593 L950 593 L945 595 L788 595 L787 594 Z M365 421 L324 428 L284 443 L246 467 L217 495 L192 531 L176 567 L167 607 L166 649 L173 687 L187 722 L208 755 L236 785 L269 809 L306 826 L346 836 L389 838 L430 832 L461 821 L501 798 L537 764 L558 734 L577 688 L583 658 L584 618 L579 582 L565 540 L545 504 L529 484 L512 468 L480 446 L439 429 L404 422 Z M361 513 L385 512 L410 516 L437 528 L450 537 L462 548 L478 570 L486 587 L493 615 L494 640 L490 663 L480 688 L469 704 L451 722 L435 733 L408 744 L390 747 L361 747 L349 745 L329 739 L309 728 L301 722 L286 707 L277 695 L265 671 L260 651 L259 624 L262 605 L271 580 L285 557 L298 543 L318 528 L337 519 Z"/>
+              <path fill="url(#tGradient)" d="M197 375 L571 377 L571 541 L586 583 L591 626 L586 679 L571 720 L571 897 L588 898 L680 897 L680 377 L1060 376 L981 290 L275 290 Z"/>
+            </svg>
+            OBTRADER <span>LIVE</span>
+        </div>
+        <select class="lang-select" id="langSelect" onchange="changeLanguage(this.value)">
+            <option value="en" selected>EN 🇺🇸</option>
+            <option value="zh">ZH 🇨🇳</option>
+            <option value="tr">TR 🇹🇷</option>
+            <option value="de">DE 🇩🇪</option>
+            <option value="ko">KO 🇰🇷</option>
+            <option value="es">ES 🇪🇸</option>
+            <option value="ar">AR 🇸🇦</option>
+            <option value="fr">FR 🇫🇷</option>
+        </select>
+    </div>
+
+    <div class="tabs-container">
+        <div class="tabs" id="tabList"></div>
+        <button class="btn-add-tab" onclick="createNewTab()" id="btnNewTabTitle" title="New List">＋</button>
+    </div>
+
+    <div class="watch-grid" id="watchGrid"></div>
+
+    <!-- GRAFİK VE TAHTA YAN YANA / ÜST ÜSTE ALANI -->
+    <div class="chart-ob-wrapper">
+        <!-- TRADINGVIEW CHART ALANI -->
+        <div class="chart-container-box">
+            <div class="chart-header" id="chartSymbolTitle">BTC/USDT Chart</div>
+            <div class="tradingview-widget-container" id="tvChartContainer"></div>
+        </div>
+
+        <!-- TAHTA ALANI -->
+        <div class="ob-drawer">
+            <div class="ob-header">
+                <span id="activeSymbolTitle">BTC/USDT</span>
+                <span style="display:flex;gap:8px;align-items:center"><span style="color: #848e9c; font-size: 11px;" id="lblDepth">Depth</span><select id="obGroup" onchange="onGroupChange(this.value)" title="Group" style="background:#1e2329;color:#eaecef;border:1px solid #2b313a;border-radius:4px;font-size:11px;padding:2px 4px"></select></span>
+            </div>
+            
+            <table class="orderbook-table">
+                <thead>
+                    <tr>
+                        <th id="thPrice">Price ($)</th>
+                        <th id="thAmount">Amount</th>
+                        <th id="thTotal">Total ($)</th>
+                    </tr>
+                </thead>
+            </table>
+
+            <!-- Satış Emri Tablosu -->
+            <div class="scrollable-table-container" id="asksContainer">
+                <table class="orderbook-table">
+                    <tbody id="asksTable" class="asks"></tbody>
+                </table>
+            </div>
+
+            <!-- Ortadaki Sabit Canlı Fiyat Bandı -->
+            <div class="mid-price-bar">
+                <div class="mid-price-val" id="midPrice">--</div>
+                <div class="mid-price-sub" id="midPriceSpread">Spread: --</div>
+            </div>
+
+            <!-- Alış Emri Tablosu -->
+            <div class="scrollable-table-container" id="bidsContainer">
+                <table class="orderbook-table">
+                    <tbody id="bidsTable" class="bids"></tbody>
+                </table>
+            </div>
+
+            <!-- Alım/Satım Oran Çizelgesi -->
+            <div class="ratio-container">
+                <div class="ratio-labels">
+                    <span class="ratio-buy-text" id="ratioBuyText">Buy %50.0</span>
+                    <span class="ratio-sell-text" id="ratioSellText">%50.0 Sell</span>
+                </div>
+                <div class="ratio-bar-bg">
+                    <div class="ratio-bar-fill" id="ratioBarFill"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- MODAL: Coin Ekleme (ÇİFT BORSA DROPDOWN ARAMA) -->
+    <div class="modal" id="addModal">
+        <div class="modal-content">
+            <span class="modal-close-x" onclick="closeModal('addModal')">✕</span>
+            <h3 id="modalAddTitle">Add Pair to Watchlist</h3>
+            <div class="form-group">
+                <label id="lblCoinSymbol">Coin Symbol</label>
+                <input type="text" id="newSymbolInput" placeholder="ADD pair (e.g. dogeusdt)..." autocomplete="off">
+                <div id="searchResults" class="search-results-dropdown"></div>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-close" onclick="closeModal('addModal')" id="btnCancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Alarm & Ayarlar -->
+    <div class="modal" id="alarmModal">
+        <div class="modal-content">
+            <span class="modal-close-x" onclick="closeModal('alarmModal')">✕</span>
+            <h3 id="alarmModalTitle">Settings & Alarm</h3>
+            
+            <div class="form-group">
+                <label id="lblTargetPrice">1. Target Price Trigger ($)</label>
+                <input type="number" id="alarmTargetPrice" step="any" placeholder="0.00">
+            </div>
+            
+            <div class="form-group">
+                <label id="lblWhaleVol">2. Whale Order Alarm (Min $ Volume)</label>
+                <input type="number" id="alarmVolumeThreshold" step="10000" placeholder="250000">
+            </div>
+
+            <div class="form-group">
+                <label id="lblAlarmType">Alarm Mode</label>
+                <div class="radio-group">
+                    <label class="radio-option">
+                        <input type="radio" name="alarmMode" value="once" checked> <span id="lblModeOnce">One-Time</span>
+                    </label>
+                    <label class="radio-option">
+                        <input type="radio" name="alarmMode" value="persistent"> <span id="lblModePersistent">Persistent</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="active-alarms-box" id="activeAlarmsBox" style="display: none;">
+                <div class="active-alarms-title" id="lblActiveAlarms">Active Alarms</div>
+                <div id="activeAlarmsList"></div>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="btn btn-close" onclick="closeModal('alarmModal')" id="btnClose">Close</button>
+                <button class="btn btn-add" onclick="saveAlarmSettings()" id="btnSaveAlarm">Save Alarm</button>
+            </div>
+
+            <span class="remove-coin-link" onclick="removeCurrentSymbol()" id="btnRemoveCoin">Remove this coin pair from list</span>
+        </div>
+    </div>
+
+    <script>
+        const i18n = {
+            en: {
+                mainList: "Main List",
+                listPrefix: "List",
+                liveBoard: "Live Order Book",
+                depth: "Depth: 20x20",
+                price: "Price ($)",
+                amount: "Amount",
+                total: "Total ($)",
+                addModalTitle: "Add Pair to Watchlist",
+                coinSymbol: "Coin Symbol",
+                symbolPlaceholder: "ADD pair (e.g. dogeusdt)...",
+                cancel: "Cancel",
+                add: "Add",
+                settingsAlarm: "Settings & Alarm",
+                targetPrice: "1. Target Price Trigger ($)",
+                whaleVol: "2. Whale Order Alarm (Min $ Volume)",
+                alarmType: "Alarm Mode",
+                once: "One-Time",
+                persistent: "Persistent",
+                activeAlarms: "Active Alarms",
+                close: "Close",
+                saveAlarm: "Save Alarm",
+                removeCoin: "Remove this coin pair from list",
+                alarmTargetText: "Target Price",
+                alarmVolText: "Min Volume",
+                toastPrice: "🔔 ALARM: {sym} reached target price ${target}!",
+                toastWhaleSell: "🚨 WHALE ORDER: ${vol} SELL wall on {sym}!",
+                toastWhaleBuy: "🚨 WHALE ORDER: ${vol} BUY wall on {sym}!",
+                toastRemoved: "{sym} removed from list.",
+                toastSaved: "Alarm saved for {sym}.",
+                buyText: "Buy",
+                sellText: "Sell",
+                notFound: "Coin not found"
+            },
+            zh: {
+                mainList: "主列表",
+                listPrefix: "列表",
+                liveBoard: "实时订单簿",
+                depth: "深度: 20x20",
+                price: "价格 ($)",
+                amount: "数量",
+                total: "总计 ($)",
+                addModalTitle: "添加交易对",
+                coinSymbol: "代币代码",
+                symbolPlaceholder: "添加交易对 (例如: dogeusdt)...",
+                cancel: "取消",
+                add: "添加",
+                settingsAlarm: "设置与预警",
+                targetPrice: "1. 目标价格触发 ($)",
+                whaleVol: "2. 巨鲸大单预警 (最小 $ 额)",
+                alarmType: "预警模式",
+                once: "仅一次",
+                persistent: "持续",
+                activeAlarms: "已激活预警",
+                close: "关闭",
+                saveAlarm: "保存预警",
+                removeCoin: "从列表中移除此交易对",
+                alarmTargetText: "目标价",
+                alarmVolText: "最小额",
+                toastPrice: "🔔 预警: {sym} 已达到目标价 ${target}!",
+                toastWhaleSell: "🚨 巨鲸大单: {sym} 出现 ${vol} 卖盘!",
+                toastWhaleBuy: "🚨 巨鲸大单: {sym} 出现 ${vol} 买盘!",
+                toastRemoved: "{sym} 已移除。",
+                toastSaved: "{sym} 预警已保存。",
+                buyText: "买入",
+                sellText: "卖出",
+                notFound: "未找到币种"
+            },
+            tr: {
+                mainList: "Ana Listem",
+                listPrefix: "Liste",
+                liveBoard: "Canlı Tahta",
+                depth: "Derinlik: 20x20",
+                price: "Fiyat ($)",
+                amount: "Miktar",
+                total: "Toplam ($)",
+                addModalTitle: "İzleme Listesine Parite Ekle",
+                coinSymbol: "Coin Sembolü",
+                symbolPlaceholder: "Parite ekle (örn: dogeusdt)...",
+                cancel: "İptal",
+                add: "Ekle",
+                settingsAlarm: "Ayarlar & Alarm",
+                targetPrice: "1. Hedef Fiyat Tetiklemesi ($)",
+                whaleVol: "2. Tahta Balina Emri Alarmı (Min $ Hacim)",
+                alarmType: "Alarm Çalışma Tipi",
+                once: "Tek Seferlik",
+                persistent: "Sürekli",
+                activeAlarms: "Aktif Alarmlar",
+                close: "Kapat",
+                saveAlarm: "Alarmı Kaydet",
+                removeCoin: "Bu coin çiftini listeden kaldır",
+                alarmTargetText: "Hedef Fiyat",
+                alarmVolText: "Min Hacim",
+                toastPrice: "🔔 ALARM: {sym} hedeflenen {target} $ seviyesine ulaştı!",
+                toastWhaleSell: "🚨 BALİNA EMRİ: {sym} tahtasında ${vol} SATIM duvarı belirdi!",
+                toastWhaleBuy: "🚨 BALİNA EMRİ: {sym} tahtasında ${vol} ALIM duvarı belirdi!",
+                toastRemoved: "{sym} listeden kaldırıldı.",
+                toastSaved: "{sym} için alarm kaydedildi.",
+                buyText: "Alım",
+                sellText: "Satım",
+                notFound: "Coin bulunamadı"
+            },
+            de: {
+                mainList: "Hauptliste",
+                listPrefix: "Liste",
+                liveBoard: "Live-Orderbuch",
+                depth: "Tiefe: 20x20",
+                price: "Preis ($)",
+                amount: "Menge",
+                total: "Gesamt ($)",
+                addModalTitle: "Paar zur Liste hinzufügen",
+                coinSymbol: "Coin-Symbol",
+                symbolPlaceholder: "Paar hinzufügen (z.B. dogeusdt)...",
+                cancel: "Abbrechen",
+                add: "Hinzufügen",
+                settingsAlarm: "Einstellungen & Alarm",
+                targetPrice: "1. Zielpreis-Auslöser ($)",
+                whaleVol: "2. Wal-Order-Alarm (Min $ Volumen)",
+                alarmType: "Alarmmodus",
+                once: "Einmalig",
+                persistent: "Dauerhaft",
+                activeAlarms: "Aktive Alarme",
+                close: "Schließen",
+                saveAlarm: "Alarm Speichern",
+                removeCoin: "Dieses Paar aus Liste entfernen",
+                alarmTargetText: "Zielpreis",
+                alarmVolText: "Min Vol",
+                toastPrice: "🔔 ALARM: {sym} hat Zielpreis von ${target} erreicht!",
+                toastWhaleSell: "🚨 WAL-ORDER: ${vol} VERKAUFS-Wand bei {sym}!",
+                toastWhaleBuy: "🚨 WAL-ORDER: ${vol} KAUF-Wand bei {sym}!",
+                toastRemoved: "{sym} entfernt.",
+                toastSaved: "Alarm gespeichert für {sym}.",
+                buyText: "Kauf",
+                sellText: "Verkauf",
+                notFound: "Münze nicht gefunden"
+            },
+            ko: {
+                mainList: "메인 리스트",
+                listPrefix: "리스트",
+                liveBoard: "실시간 호가창",
+                depth: "깊이: 20x20",
+                price: "가격 ($)",
+                amount: "수량",
+                total: "총액 ($)",
+                addModalTitle: "페어 추가하기",
+                coinSymbol: "코인 심볼",
+                symbolPlaceholder: "페어 추가 (예: dogeusdt)...",
+                cancel: "취소",
+                add: "추가",
+                settingsAlarm: "설정 및 알람",
+                targetPrice: "1. 목표 가격 알람 ($)",
+                whaleVol: "2. 고래 주문 알람 (최소 $ 볼륨)",
+                alarmType: "알람 모드",
+                once: "1회성",
+                persistent: "지속",
+                activeAlarms: "활성화된 알람",
+                close: "닫기",
+                saveAlarm: "알람 저장",
+                removeCoin: "이 페어 목록에서 삭제",
+                alarmTargetText: "목표가",
+                alarmVolText: "최소 볼륨",
+                toastPrice: "🔔 알람: {sym} 목표가 ${target} 도달!",
+                toastWhaleSell: "🚨 고래 주문: {sym} 에 ${vol} 매도 벽 감지!",
+                toastWhaleBuy: "🚨 고래 주문: {sym} 에 ${vol} 매수 벽 감지!",
+                toastRemoved: "{sym} 삭제됨.",
+                toastSaved: "{sym} 알람 저장됨.",
+                buyText: "매수",
+                sellText: "매도",
+                notFound: "코인을 찾을 수 없습니다"
+            },
+            es: {
+                mainList: "Mi Lista",
+                listPrefix: "Lista",
+                liveBoard: "Libro de Órdenes",
+                depth: "Profundidad: 20x20",
+                price: "Precio ($)",
+                amount: "Cantidad",
+                total: "Total ($)",
+                addModalTitle: "Añadir Par a la Lista",
+                coinSymbol: "Símbolo de Cripto",
+                symbolPlaceholder: "Añadir par (ej: dogeusdt)...",
+                cancel: "Cancelar",
+                add: "Añadir",
+                settingsAlarm: "Ajustes y Alarma",
+                targetPrice: "1. Alerta de Precio Objetivo ($)",
+                whaleVol: "2. Alerta de Orden Ballena (Volumen Mín $)",
+                alarmType: "Modo de Alarma",
+                once: "Una vez",
+                persistent: "Persistente",
+                activeAlarms: "Alarmas Activas",
+                close: "Cerrar",
+                saveAlarm: "Guardar Alarma",
+                removeCoin: "Eliminar este par de la lista",
+                alarmTargetText: "Precio Obj.",
+                alarmVolText: "Vol Mínimo",
+                toastPrice: "🔔 ALARMA: ¡{sym} alcanzó el precio target de ${target}!",
+                toastWhaleSell: "🚨 ORDEN BALLENA: ¡Muro de VENTA de ${vol} en {sym}!",
+                toastWhaleBuy: "🚨 ORDEN BALLENA: ¡Muro de COMPRA de ${vol} en {sym}!",
+                toastRemoved: "{sym} eliminado.",
+                toastSaved: "Alarma guardada para {sym}.",
+                buyText: "Compra",
+                sellText: "Venta",
+                notFound: "Coin no encontrado"
+            },
+            ar: {
+                mainList: "قائمتي الرئيسية",
+                listPrefix: "قائمة",
+                liveBoard: "سجل الطلبات المباشر",
+                depth: "العمق: 20x20",
+                price: "السعر ($)",
+                amount: "الكمية",
+                total: "الإجمالي ($)",
+                addModalTitle: "إضافة زوج إلى القائمة",
+                coinSymbol: "رمز العملة",
+                symbolPlaceholder: "إضافة زوج (مثال: dogeusdt)...",
+                cancel: "إلغاء",
+                add: "إضافة",
+                settingsAlarm: "الإعدادات والتنبيه",
+                targetPrice: "1. سعر الهدف للتنبيه ($)",
+                whaleVol: "2. تنبيه طلبات الحيتان (أقل حجم $)",
+                alarmType: "وضع التنبيه",
+                once: "مرة واحدة",
+                persistent: "مستمر",
+                activeAlarms: "التنبيهات النشطة",
+                close: "إغلاق",
+                saveAlarm: "حفظ التنبيه",
+                removeCoin: "إزالة هذا الزوج من القائمة",
+                alarmTargetText: "السعر Target",
+                alarmVolText: "أدنى حجم",
+                toastPrice: "🔔 تنبيه: وصلت {sym} إلى السعر المستهدف ${target}!",
+                toastWhaleSell: "🚨 طلب حوت: جدار بيع بقيمة ${vol} على {sym}!",
+                toastWhaleBuy: "🚨 طلب حوت: جدار شراء بقيمة ${vol} على {sym}!",
+                toastRemoved: "تمت إزالة {sym}.",
+                toastSaved: "تم حفظ التنبيه لـ {sym}.",
+                buyText: "شراء",
+                sellText: "بيع",
+                notFound: "لم يتم العثور على العملة"
+            },
+            fr: {
+                mainList: "Liste Principale",
+                listPrefix: "Liste",
+                liveBoard: "Carnet d'ordres",
+                depth: "Profondeur: 20x20",
+                price: "Prix ($)",
+                amount: "Quantité",
+                total: "Total ($)",
+                addModalTitle: "Ajouter une Paire",
+                coinSymbol: "Symbole Coin",
+                symbolPlaceholder: "Ajouter paire (ex: dogeusdt)...",
+                cancel: "Annuler",
+                add: "Ajouter",
+                settingsAlarm: "Paramètres & Alarme",
+                targetPrice: "1. Déclencheur Prix Cible ($)",
+                whaleVol: "2. Alerte Ordre Baleine (Vol Min $)",
+                alarmType: "Mode Alarme",
+                once: "Une Fois",
+                persistent: "Persistant",
+                activeAlarms: "Alarmes Actives",
+                close: "Fermer",
+                saveAlarm: "Enregistrer l'Alarme",
+                removeCoin: "Retirer cette paire de la liste",
+                alarmTargetText: "Prix Cible",
+                alarmVolText: "Vol Min",
+                toastPrice: "🔔 ALARME: {sym} a atteint le prix cible de ${target}!",
+                toastWhaleSell: "🚨 ORDRE BALEINE: Mur de VENTE de ${vol} sur {sym}!",
+                toastWhaleBuy: "🚨 ORDRE BALEINE: Mur d'ACHAT de ${vol} sur {sym}!",
+                toastRemoved: "{sym} retiré.",
+                toastSaved: "Alarme enregistrée pour {sym}.",
+                buyText: "Achat",
+                sellText: "Vente",
+                notFound: "Pièce non trouvée"
+            }
+        };
+
+        const urlParams = new URLSearchParams(window.location.search);
+        let currentLang = urlParams.get('lang') || 'en';
+        if (!i18n[currentLang]) currentLang = 'en';
+
+        // Desteklenen Borsalar
+        const supportedExchanges = ["BINANCE", "OKX", "COINBASE", "KUCOIN", "BITFINEX"];
+
+        let lists = [
+            {
+                id: 'main',
+                titleKey: 'mainList',
+                title: i18n[currentLang].mainList,
+                symbols: [
+                    { symbol: 'btcusdt', name: 'BTC/USDT', exchange: 'BINANCE' },
+                    { symbol: 'ethusdt', name: 'ETH/USDT', exchange: 'BINANCE' }
+                ]
+            }
+        ];
+
+        let activeListId = 'main';
+        let selectedSymbol = 'btcusdt';
+        let selectedExchange = 'BINANCE';
+        let targetAlarmSymbol = '';
+        let tickerWs, depthWs;
+        let alarms = {};
+        let lastPrices = {};
+        let tvWidget = null;
+        let isInitialAsksScrollDone = false;
+
+        /* KALICI DURUM (localStorage) */
+        const STORE_KEY = 'obtrader_state_v1';
+        try {
+            const saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+            if (saved && Array.isArray(saved.lists) && saved.lists.length) {
+                lists = saved.lists;
+                activeListId = lists.some(l => l.id === saved.activeListId) ? saved.activeListId : lists[0].id;
+                alarms = {};
+                Object.entries(saved.alarms || {}).forEach(([k, v]) => { alarms[k.includes('-') ? k : 'binance-' + k] = v; });
+                if (!urlParams.get('lang') && saved.lang && i18n[saved.lang]) currentLang = saved.lang;
+                const first = (lists.find(l => l.id === activeListId) || lists[0]).symbols[0];
+                if (first) { selectedSymbol = first.symbol; selectedExchange = first.exchange || 'BINANCE'; }
+            }
+        } catch (e) {}
+        let lastSavedState = '';
+        function persistState() {
+            try {
+                const st = JSON.stringify({ lists, activeListId, alarms, lang: currentLang });
+                if (st !== lastSavedState) { localStorage.setItem(STORE_KEY, st); lastSavedState = st; }
+            } catch (e) {}
+        }
+        setInterval(persistState, 1500);
+        window.addEventListener('pagehide', persistState);
+        document.addEventListener('visibilitychange', () => { if (document.hidden) persistState(); });
+
+        /* BİLDİRİMLER */
+        let swReg = null;
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').then(r => { swReg = r; }).catch(() => {});
+        }
+        function askNotifyPermission() {
+            try { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {}
+        }
+        const whaleSeen = {};
+        function alarmNotify(msg, tag) {
+            showToast(msg);
+            try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) {}
+            try {
+                if (!('Notification' in window) || Notification.permission !== 'granted') return;
+                const opts = { body: msg, icon: 'icons/icon-192.png', badge: 'icons/icon-192.png', tag: tag || 'obtrader', renotify: true };
+                if (swReg && swReg.showNotification) swReg.showNotification('ObTrader', opts);
+                else new Notification('ObTrader', opts);
+            } catch (e) {}
+        }
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            document.documentElement.dir = (lang === 'ar') ? 'rtl' : 'ltr';
+
+            document.getElementById('langSelect').value = lang;
+
+            const t = i18n[lang];
+            document.getElementById('lblDepth').innerText = t.depth;
+            document.getElementById('thPrice').innerText = t.price;
+            document.getElementById('thAmount').innerText = t.amount;
+            document.getElementById('thTotal').innerText = t.total;
+            document.getElementById('modalAddTitle').innerText = t.addModalTitle;
+            document.getElementById('lblCoinSymbol').innerText = t.coinSymbol;
+            document.getElementById('newSymbolInput').placeholder = t.symbolPlaceholder;
+            document.getElementById('btnCancel').innerText = t.cancel;
+            document.getElementById('lblTargetPrice').innerText = t.targetPrice;
+            document.getElementById('lblWhaleVol').innerText = t.whaleVol;
+            document.getElementById('lblAlarmType').innerText = t.alarmType;
+            document.getElementById('lblModeOnce').innerText = t.once;
+            document.getElementById('lblModePersistent').innerText = t.persistent;
+            document.getElementById('lblActiveAlarms').innerText = t.activeAlarms;
+            document.getElementById('btnClose').innerText = t.close;
+            document.getElementById('btnSaveAlarm').innerText = t.saveAlarm;
+            document.getElementById('btnRemoveCoin').innerText = t.removeCoin;
+
+            lists.forEach((l, idx) => {
+                if(l.titleKey) l.title = t[l.titleKey];
+                else l.title = `${t.listPrefix} ${idx + 1}`;
+            });
+
+            renderTabs();
+            renderGrid();
+            updateLiveBoardTitle();
+            renderTradingViewWidget();
+        }
+
+        function playBeep() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, ctx.currentTime);
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.3);
+            } catch(e) {}
+        }
+
+        function showToast(msg) {
+            playBeep();
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = msg;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        function renderTabs() {
+            const tabList = document.getElementById('tabList');
+            tabList.innerHTML = '';
+
+            lists.forEach(l => {
+                const tab = document.createElement('div');
+                tab.className = `tab ${l.id === activeListId ? 'active' : ''}`;
+                tab.innerText = l.title;
+                tab.onclick = () => switchTab(l.id);
+                tabList.appendChild(tab);
+            });
+        }
+
+        function createNewTab() {
+            const newId = 'list_' + Date.now();
+            const t = i18n[currentLang];
+            const newTitle = `${t.listPrefix} ${lists.length + 1}`;
+            
+            lists.push({
+                id: newId,
+                title: newTitle,
+                symbols: [
+                    { symbol: 'btcusdt', name: 'BTC/USDT', exchange: 'BINANCE' },
+                    { symbol: 'ethusdt', name: 'ETH/USDT', exchange: 'BINANCE' }
+                ]
+            });
+
+            switchTab(newId);
+        }
+
+        function switchTab(listId) {
+            activeListId = listId;
+            renderTabs();
+            
+            const currentList = getCurrentList();
+            if (currentList.symbols.length > 0) {
+                selectedSymbol = currentList.symbols[0].symbol;
+                selectedExchange = currentList.symbols[0].exchange || 'BINANCE';
+                selectSymbol(selectedSymbol, currentList.symbols[0].name, selectedExchange);
+            } else {
+                selectedSymbol = '';
+            }
+
+            renderGrid();
+        }
+
+        function getCurrentList() {
+            return lists.find(l => l.id === activeListId);
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('watchGrid');
+            grid.innerHTML = '';
+
+            const currentList = getCurrentList();
+
+            currentList.symbols.forEach(item => {
+                const card = document.createElement('div');
+                const ex = item.exchange || 'BINANCE';
+                const key = ik(ex, item.symbol);
+                card.className = `card ${key === selectedKey() ? 'active' : ''}`;
+                card.id = `card-${key}`;
+                
+                card.onclick = (e) => {
+                    if(!e.target.classList.contains('more-btn')) {
+                        selectSymbol(item.symbol, item.name, item.exchange || 'BINANCE');
+                    }
+                };
+
+                const hasAlarm = alarms[key] && (alarms[key].targetPrice || alarms[key].volumeThreshold);
+
+                card.innerHTML = `
+                    <div class="card-header">
+                        <div class="symbol-name">
+                            ${item.name}
+                            <span class="exchange-badge">${item.exchange || 'BINANCE'}</span>
+                        </div>
+                        <div class="header-right">
+                            <div class="change" id="change-${key}">%0.00</div>
+                            <div class="more-btn ${hasAlarm ? 'has-alarm' : ''}" onclick="openAlarmModal('${key}', '${item.name}')">⋮</div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="price" id="price-${key}">${lastPrices[key] ? fmtPrice(lastPrices[key]) : '--'}</div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            const addCard = document.createElement('div');
+            addCard.className = 'card-add-box';
+            addCard.onclick = openAddModal;
+            addCard.innerHTML = `<div class="card-add-icon">＋</div>`;
+            grid.appendChild(addCard);
+
+            connectTickerStream();
+        }
+
+        function selectSymbol(sym, name, exchange = 'BINANCE') {
+            selectedSymbol = sym;
+            selectedExchange = exchange;
+            isInitialAsksScrollDone = false;
+            document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+            const card = document.getElementById(`card-${ik(exchange, sym)}`);
+            if (card) card.classList.add('active');
+
+            updateLiveBoardTitle(name);
+            connectDepthStream();
+            renderTradingViewWidget();
+        }
+
+        function updateLiveBoardTitle(name) {
+            const currentList = getCurrentList();
+            const currentItem = currentList ? currentList.symbols.find(s => s.symbol === selectedSymbol) : null;
+            const displayName = name || (currentItem ? currentItem.name : '---');
+            document.getElementById('activeSymbolTitle').innerText = `${displayName} (${selectedExchange})`;
+            document.getElementById('chartSymbolTitle').innerText = `${displayName} Chart (${selectedExchange})`;
+        }
+
+        /* ===== BORSA KATMANI (5 borsa) ===== */
+        const USD_QUOTE = { COINBASE: 1, BITFINEX: 1 };
+        function baseOf(sym) { return String(sym).toUpperCase().replace(/[-_/]/g, '').replace(/USDT$/, '').replace(/USD$/, ''); }
+        function pairName(sym, ex) { return baseOf(sym) + (USD_QUOTE[ex] ? '/USD' : '/USDT'); }
+        function ik(ex, sym) { return (ex || 'BINANCE').toLowerCase() + '-' + sym; }
+        function exSym(ex, sym) {
+            const b = baseOf(sym);
+            switch (ex) {
+                case 'KUCOIN': case 'OKX': return b + '-USDT';
+                case 'COINBASE': return b + '-USD';
+                case 'BITFINEX': return 't' + (b.length > 3 ? b + ':USD' : b + 'USD');
+                default: return b + 'USDT';
+            }
+        }
+        function fromExSym(s) { return baseOf(String(s).replace(/^t/, '').replace(':', '')).toLowerCase() + 'usdt'; }
+        function tvSymbol(ex, sym) { return ex + ':' + baseOf(sym) + (USD_QUOTE[ex] ? 'USD' : 'USDT'); }
+        function keyLabel(k) { const i = k.indexOf('-'); const ex = k.slice(0, i).toUpperCase(); return pairName(k.slice(i + 1), ex) + ' (' + ex + ')'; }
+        const KUCOIN_TOKEN_URL = 'https://cryptoverifly.com/api/kc-token.php';
+        async function kucoinSocketUrl() {
+            const j = await (await fetch(KUCOIN_TOKEN_URL)).json();
+            const s = j.data.instanceServers[0];
+            return { url: `${s.endpoint}?token=${j.data.token}&connectId=${Date.now()}`, ping: s.pingInterval || 18000 };
+        }
+        function fmtPrice(p, dec) {
+            if (dec == null) dec = p < 1 ? 6 : p < 100 ? 4 : 2;
+            return p.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+        }
+
+        /* ===== FİYAT AKIŞLARI (tüm listeler + alarmlar) ===== */
+        let tickerSockets = [];
+        let tickerTimers = [];
+        function onTick(ex, sym, price, change) {
+            if (!isFinite(price)) return;
+            const k = ik(ex, sym);
+            const priceEl = document.getElementById(`price-${k}`);
+            const changeEl = document.getElementById(`change-${k}`);
+            if (priceEl) priceEl.innerText = fmtPrice(price);
+            if (changeEl && isFinite(change)) {
+                changeEl.innerText = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+                changeEl.className = `change ${change >= 0 ? 'up' : 'down'}`;
+            }
+            const a = alarms[k];
+            if (a && a.targetPrice) {
+                const target = a.targetPrice, prev = lastPrices[k];
+                if (prev && ((prev < target && price >= target) || (prev > target && price <= target))) {
+                    const msg = i18n[currentLang].toastPrice.replace('{sym}', keyLabel(k)).replace('{target}', target);
+                    alarmNotify(msg, 'price-' + k);
+                    if (a.mode === 'once') { delete a.targetPrice; renderGrid(); }
+                }
+            }
+            lastPrices[k] = price;
+        }
+        function wantedTickers() {
+            const m = {};
+            const add = (ex, sym) => { ex = ex || 'BINANCE'; (m[ex] = m[ex] || new Set()).add(sym); };
+            lists.forEach(l => l.symbols.forEach(i => add(i.exchange, i.symbol)));
+            Object.keys(alarms).forEach(k => { if (alarms[k] && alarms[k].targetPrice) { const i = k.indexOf('-'); add(k.slice(0, i).toUpperCase(), k.slice(i + 1)); } });
+            return m;
+        }
+        function connectTickerStream() {
+            tickerSockets.forEach(w => { try { w.onclose = null; w.close(); } catch (e) {} });
+            tickerTimers.forEach(clearInterval);
+            tickerSockets = []; tickerTimers = [];
+            const want = wantedTickers();
+            Object.entries(want).forEach(([ex, set]) => { const syms = [...set]; if (syms.length) openTicker(ex, syms); });
+        }
+        function keepAlive(ws, fn, ms) { const t = setInterval(() => { if (ws.readyState === 1) fn(); }, ms); tickerTimers.push(t); }
+        async function openTicker(ex, syms) {
+            try {
+                if (ex === 'BINANCE') {
+                    const ws = new WebSocket(`wss://stream.binance.com:9443/stream?streams=${syms.map(s => exSym(ex, s).toLowerCase() + '@ticker').join('/')}`);
+                    tickerSockets.push(ws);
+                    ws.onmessage = e => { const d = JSON.parse(e.data).data; if (d && d.s) onTick(ex, d.s.toLowerCase(), +d.c, +d.P); };
+                } else if (ex === 'OKX') {
+                    const ws = new WebSocket('wss://ws.okx.com:8443/ws/v5/public');
+                    tickerSockets.push(ws);
+                    ws.onopen = () => ws.send(JSON.stringify({ op: 'subscribe', args: syms.map(s => ({ channel: 'tickers', instId: exSym(ex, s) })) }));
+                    ws.onmessage = e => { if (e.data === 'pong') return; const j = JSON.parse(e.data); (j.data || []).forEach(d => onTick(ex, fromExSym(d.instId), +d.last, (d.last / d.open24h - 1) * 100)); };
+                    keepAlive(ws, () => ws.send('ping'), 25000);
+                } else if (ex === 'COINBASE') {
+                    const ws = new WebSocket('wss://ws-feed.exchange.coinbase.com');
+                    tickerSockets.push(ws);
+                    ws.onopen = () => ws.send(JSON.stringify({ type: 'subscribe', product_ids: syms.map(s => exSym(ex, s)), channels: ['ticker'] }));
+                    ws.onmessage = e => { const d = JSON.parse(e.data); if (d.type === 'ticker') onTick(ex, fromExSym(d.product_id), +d.price, (d.price / d.open_24h - 1) * 100); };
+                } else if (ex === 'BITFINEX') {
+                    const ws = new WebSocket('wss://api-pub.bitfinex.com/ws/2');
+                    tickerSockets.push(ws);
+                    const chans = {};
+                    ws.onopen = () => syms.forEach(s => ws.send(JSON.stringify({ event: 'subscribe', channel: 'ticker', symbol: exSym(ex, s) })));
+                    ws.onmessage = e => {
+                        const d = JSON.parse(e.data);
+                        if (d.event === 'subscribed') { chans[d.chanId] = fromExSym(d.symbol); return; }
+                        if (Array.isArray(d) && Array.isArray(d[1]) && chans[d[0]]) onTick(ex, chans[d[0]], +d[1][6], d[1][5] * 100);
+                    };
+                } else if (ex === 'KUCOIN') {
+                    const k = await kucoinSocketUrl();
+                    const ws = new WebSocket(k.url);
+                    tickerSockets.push(ws);
+                    ws.onmessage = e => {
+                        const j = JSON.parse(e.data);
+                        if (j.type === 'welcome') ws.send(JSON.stringify({ id: Date.now(), type: 'subscribe', topic: '/market/snapshot:' + syms.map(s => exSym(ex, s)).join(','), response: true }));
+                        else if (j.type === 'message' && j.data && j.data.data) { const d = j.data.data; onTick(ex, fromExSym(d.symbol), +d.lastTradedPrice, d.changeRate * 100); }
+                    };
+                    keepAlive(ws, () => ws.send(JSON.stringify({ id: Date.now(), type: 'ping' })), k.ping);
+                }
+            } catch (err) { console.warn('ticker', ex, err); }
+        }
+
+        /* ===== EMİR DEFTERİ (tam derinlik) ===== */
+        let book = { bids: new Map(), asks: new Map() };
+        let bookDirty = false, bookGen = 0, bookTimer = null;
+        let groupStep = 0, groupAuto = true;
+        const MAX_ROWS = 400;
+        function resetBook() { book = { bids: new Map(), asks: new Map() }; bookDirty = true; }
+        function applyLevels(side, levels) {
+            const m = book[side];
+            levels.forEach(l => { const p = +l[0], q = +l[1]; if (q === 0) m.delete(p); else m.set(p, q); });
+            bookDirty = true;
+        }
+        function niceSteps(mid) {
+            const out = [];
+            for (let e = -8; e <= 5; e++) [1, 2, 5].forEach(m => { const s = m * Math.pow(10, e); if (s >= mid * 2e-6 && s <= mid * 0.02) out.push(+s.toPrecision(3)); });
+            return out.slice(0, 7);
+        }
+        function updateGroupSelect(mid) {
+            const sel = document.getElementById('obGroup');
+            if (!sel || !mid) return;
+            const steps = niceSteps(mid);
+            const sig = steps.join(',');
+            if (sel.dataset.sig !== sig) {
+                sel.dataset.sig = sig;
+                sel.innerHTML = steps.map(s => `<option value="${s}">${s}</option>`).join('');
+                if (groupAuto || !steps.includes(groupStep)) groupStep = steps[Math.min(1, steps.length - 1)];
+                sel.value = String(groupStep);
+            }
+        }
+        function onGroupChange(v) { groupStep = +v; groupAuto = false; bookDirty = true; isInitialAsksScrollDone = false; }
+
+        function connectDepthStream() {
+            const gen = ++bookGen;
+            if (depthWs) { try { depthWs.onclose = null; depthWs.close(); } catch (e) {} }
+            if (bookTimer) clearInterval(bookTimer);
+            resetBook();
+            groupAuto = true;
+            const sel = document.getElementById('obGroup'); if (sel) sel.dataset.sig = '';
+            if (!selectedSymbol) return;
+            const ex = selectedExchange, s = exSym(ex, selectedSymbol);
+            bookTimer = setInterval(() => { if (bookDirty && gen === bookGen) { bookDirty = false; renderOrderBook(); } }, 400);
+            const live = () => gen === bookGen;
+            try {
+                if (ex === 'BINANCE') {
+                    let ready = false, lastId = 0, buf = [];
+                    const ws = depthWs = new WebSocket(`wss://stream.binance.com:9443/ws/${s.toLowerCase()}@depth@100ms`);
+                    const snap = async () => {
+                        ready = false;
+                        const j = await (await fetch(`https://api.binance.com/api/v3/depth?symbol=${s}&limit=5000`)).json();
+                        if (!live()) return;
+                        resetBook(); applyLevels('bids', j.bids); applyLevels('asks', j.asks); lastId = j.lastUpdateId;
+                        buf.filter(ev => ev.u > lastId).forEach(ev => { applyLevels('bids', ev.b); applyLevels('asks', ev.a); lastId = ev.u; });
+                        buf = []; ready = true;
+                    };
+                    ws.onopen = snap;
+                    ws.onmessage = e => {
+                        if (!live()) return;
+                        const ev = JSON.parse(e.data);
+                        if (!ready) { buf.push(ev); return; }
+                        if (ev.u <= lastId) return;
+                        if (ev.U > lastId + 1) { buf = [ev]; snap(); return; }
+                        applyLevels('bids', ev.b); applyLevels('asks', ev.a); lastId = ev.u;
+                    };
+                } else if (ex === 'OKX') {
+                    const ws = depthWs = new WebSocket('wss://ws.okx.com:8443/ws/v5/public');
+                    ws.onopen = () => ws.send(JSON.stringify({ op: 'subscribe', args: [{ channel: 'books', instId: s }] }));
+                    ws.onmessage = e => {
+                        if (!live() || e.data === 'pong') return;
+                        const j = JSON.parse(e.data); if (!j.data) return;
+                        const d = j.data[0]; if (j.action === 'snapshot') resetBook();
+                        applyLevels('bids', d.bids); applyLevels('asks', d.asks);
+                    };
+                    const t = setInterval(() => { if (!live()) return clearInterval(t); if (ws.readyState === 1) ws.send('ping'); }, 25000);
+                } else if (ex === 'COINBASE') {
+                    const ws = depthWs = new WebSocket('wss://ws-feed.exchange.coinbase.com');
+                    ws.onopen = () => ws.send(JSON.stringify({ type: 'subscribe', product_ids: [s], channels: ['level2_batch'] }));
+                    ws.onmessage = e => {
+                        if (!live()) return;
+                        const d = JSON.parse(e.data);
+                        if (d.type === 'snapshot') { resetBook(); applyLevels('bids', d.bids); applyLevels('asks', d.asks); }
+                        else if (d.type === 'l2update') d.changes.forEach(c => applyLevels(c[0] === 'buy' ? 'bids' : 'asks', [[c[1], c[2]]]));
+                    };
+                } else if (ex === 'BITFINEX') {
+                    const ws = depthWs = new WebSocket('wss://api-pub.bitfinex.com/ws/2');
+                    let chan = null;
+                    const put = r => { const p = r[0], c = r[1], a = r[2]; const side = a > 0 ? 'bids' : 'asks'; if (c === 0) book[side].delete(p); else book[side].set(p, Math.abs(a)); bookDirty = true; };
+                    ws.onopen = () => ws.send(JSON.stringify({ event: 'subscribe', channel: 'book', symbol: s, prec: 'P0', freq: 'F0', len: '250' }));
+                    ws.onmessage = e => {
+                        if (!live()) return;
+                        const d = JSON.parse(e.data);
+                        if (d.event === 'subscribed') { chan = d.chanId; return; }
+                        if (!Array.isArray(d) || d[0] !== chan || d[1] === 'hb') return;
+                        if (Array.isArray(d[1][0])) { resetBook(); d[1].forEach(put); } else put(d[1]);
+                    };
+                } else if (ex === 'KUCOIN') {
+                    kucoinSocketUrl().then(k => {
+                        if (!live()) return;
+                        const ws = depthWs = new WebSocket(k.url);
+                        ws.onmessage = e => {
+                            if (!live()) return;
+                            const j = JSON.parse(e.data);
+                            if (j.type === 'welcome') ws.send(JSON.stringify({ id: Date.now(), type: 'subscribe', topic: '/spotMarket/level2Depth50:' + s, response: true }));
+                            else if (j.type === 'message' && j.data) { resetBook(); applyLevels('bids', j.data.bids); applyLevels('asks', j.data.asks); }
+                        };
+                        const t = setInterval(() => { if (!live()) return clearInterval(t); if (ws.readyState === 1) ws.send(JSON.stringify({ id: Date.now(), type: 'ping' })); }, k.ping);
+                    }).catch(err => console.warn('kucoin', err));
+                }
+            } catch (err) { console.warn('depth', ex, err); }
+        }
+
+        function groupSide(m, step, up) {
+            const g = new Map();
+            m.forEach((q, p) => { const gp = +((up ? Math.ceil(p / step - 1e-9) : Math.floor(p / step + 1e-9)) * step).toPrecision(12); g.set(gp, (g.get(gp) || 0) + q); });
+            return g;
+        }
+        function renderOrderBook() {
+            const asksTable = document.getElementById('asksTable');
+            const bidsTable = document.getElementById('bidsTable');
+            const asksContainer = document.getElementById('asksContainer');
+            if (!book.asks.size && !book.bids.size) return;
+
+            let bestAsk = Infinity, bestBid = 0;
+            book.asks.forEach((q, p) => { if (p < bestAsk) bestAsk = p; });
+            book.bids.forEach((q, p) => { if (p > bestBid) bestBid = p; });
+            if (!isFinite(bestAsk)) bestAsk = bestBid;
+            const mid = bestBid ? (bestAsk + bestBid) / 2 : bestAsk;
+            updateGroupSelect(mid);
+            const step = groupStep || niceSteps(mid)[0] || 0.01;
+            const dec = Math.max(0, Math.min(8, -Math.floor(Math.log10(step) + 1e-9)));
+
+            const askList = [...groupSide(book.asks, step, true)].sort((a, b) => a[0] - b[0]).slice(0, MAX_ROWS).map(([price, amount]) => ({ price, amount, total: price * amount }));
+            const bidList = [...groupSide(book.bids, step, false)].sort((a, b) => b[0] - a[0]).slice(0, MAX_ROWS).map(([price, amount]) => ({ price, amount, total: price * amount }));
+
+            const maxTotal = Math.max(1, ...askList.map(a => a.total), ...bidList.map(b => b.total));
+            const row = (item, color) => {
+                const pct = Math.min(100, item.total / maxTotal * 100).toFixed(1);
+                const whale = alarms[selectedKey()] && alarms[selectedKey()].volumeThreshold && item.total >= alarms[selectedKey()].volumeThreshold;
+                return `<tr style="background: linear-gradient(to left, ${color} ${pct}%, transparent ${pct}%);${whale ? 'outline:1px solid #f0b90b;' : ''}"><td class="price">${fmtPrice(item.price, dec)}</td><td>${item.amount < 10 ? item.amount.toFixed(4) : item.amount.toFixed(2)}</td><td>${Math.round(item.total).toLocaleString()}</td></tr>`;
+            };
+            asksTable.innerHTML = askList.slice().reverse().map(i => row(i, 'rgba(246, 70, 93, 0.4)')).join('');
+            bidsTable.innerHTML = bidList.map(i => row(i, 'rgba(14, 203, 129, 0.4)')).join('');
+
+            if (!isInitialAsksScrollDone && asksContainer) {
+                setTimeout(() => { asksContainer.scrollTop = asksContainer.scrollHeight; isInitialAsksScrollDone = true; }, 50);
+            }
+
+            const t = i18n[currentLang];
+            const depthEl = document.getElementById('lblDepth');
+            if (depthEl) depthEl.innerText = `${t.depth.split(':')[0]}: ${book.bids.size.toLocaleString()}×${book.asks.size.toLocaleString()}`;
+
+            const spread = Math.abs(bestAsk - bestBid);
+            if (mid > 0) {
+                document.getElementById('midPrice').innerText = fmtPrice(mid);
+                document.getElementById('midPriceSpread').innerText = `Spread: ${spread < 1 ? spread.toFixed(4) : spread.toFixed(2)}`;
+            }
+
+            // Alış/satış oranı: orta fiyatın ±%2'si içindeki emirler
+            let bidVol = 0, askVol = 0;
+            book.bids.forEach((q, p) => { if (p >= mid * 0.98) bidVol += p * q; });
+            book.asks.forEach((q, p) => { if (p <= mid * 1.02) askVol += p * q; });
+            const buyRatio = bidVol + askVol > 0 ? bidVol / (bidVol + askVol) * 100 : 50;
+            document.getElementById('ratioBuyText').innerText = `${t.buyText} %${buyRatio.toFixed(1)}`;
+            document.getElementById('ratioSellText').innerText = `%${(100 - buyRatio).toFixed(1)} ${t.sellText}`;
+            document.getElementById('ratioBarFill').style.width = `${buyRatio}%`;
+
+            const k = selectedKey();
+            if (alarms[k] && alarms[k].volumeThreshold) {
+                const threshold = alarms[k].volumeThreshold, now = Date.now();
+                const fresh = (side, item) => { const kk = k + side + item.price; if (whaleSeen[kk] && now - whaleSeen[kk] < 60000) return false; whaleSeen[kk] = now; return true; };
+                askList.forEach(item => { if (item.total >= threshold && fresh('s', item)) alarmNotify(t.toastWhaleSell.replace('{sym}', keyLabel(k)).replace('{vol}', Math.round(item.total).toLocaleString()) + ' @ ' + fmtPrice(item.price, dec), 'whale-' + k); });
+                bidList.forEach(item => { if (item.total >= threshold && fresh('b', item)) alarmNotify(t.toastWhaleBuy.replace('{sym}', keyLabel(k)).replace('{vol}', Math.round(item.total).toLocaleString()) + ' @ ' + fmtPrice(item.price, dec), 'whale-' + k); });
+            }
+        }
+        function selectedKey() { return ik(selectedExchange, selectedSymbol); }
+
+        /* TRADINGVIEW GRAFİK YÜKLEYİCİ */
+        function renderTradingViewWidget() {
+            if (!selectedSymbol) return;
+            const container = document.getElementById('tvChartContainer');
+            container.innerHTML = ''; 
+
+            const formattedSymbol = tvSymbol(selectedExchange, selectedSymbol);
+
+            new TradingView.widget({
+                "autosize": true,
+                "symbol": formattedSymbol,
+                "interval": "15",
+                "timezone": "Etc/UTC",
+                "theme": "dark",
+                "style": "1",
+                "locale": currentLang,
+                "toolbar_bg": "#121418",
+                "enable_publishing": false,
+                "hide_side_toolbar": true,
+                "allow_symbol_change": false,
+                "container_id": "tvChartContainer"
+            });
+        }
+
+        /* DİNAMİK CANLI ARAMA / BORSA FİLTRELEME MANTIĞI */
+        const newSymbolInput = document.getElementById('newSymbolInput');
+        const searchResults = document.getElementById('searchResults');
+
+        newSymbolInput.addEventListener('input', function(e) {
+            const query = e.target.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+            searchResults.innerHTML = '';
+
+            if (!query) {
+                searchResults.classList.remove('active');
+                return;
+            }
+
+            // Arama ifadesine USDT ekleme kontrolü
+            let targetCoin = query;
+            if (!targetCoin.endsWith('USDT')) targetCoin += 'USDT';
+
+            const results = [];
+            supportedExchanges.forEach(ex => {
+                results.push({
+                    rawSymbol: targetCoin.toLowerCase(),
+                    displayName: pairName(targetCoin, ex),
+                    exchange: ex
+                });
+            });
+
+            if (results.length === 0) {
+                searchResults.innerHTML = `<div class="no-result-item">${i18n[currentLang].notFound}</div>`;
+            } else {
+                results.forEach(res => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'search-item';
+                    itemDiv.innerHTML = `
+                        <span>${res.displayName}</span>
+                        <span class="search-exchange-tag">${res.exchange}</span>
+                    `;
+                    itemDiv.onclick = () => {
+                        addSelectedPair(res.rawSymbol, res.displayName, res.exchange);
+                    };
+                    searchResults.appendChild(itemDiv);
+                });
+            }
+
+            searchResults.classList.add('active');
+        });
+
+        function addSelectedPair(rawSymbol, displayName, exchange) {
+            const currentList = getCurrentList();
+            
+            // Eğer aynı coin ve borsa kombinasyonu daha önce eklenmemişse ekle
+            if (!currentList.symbols.some(s => s.symbol === rawSymbol && s.exchange === exchange)) {
+                currentList.symbols.push({
+                    symbol: rawSymbol,
+                    name: displayName,
+                    exchange: exchange
+                });
+                renderGrid();
+                selectSymbol(rawSymbol, displayName, exchange);
+            }
+
+            newSymbolInput.value = '';
+            searchResults.classList.remove('active');
+            closeModal('addModal');
+        }
+
+        function openAddModal() {
+            document.getElementById('addModal').style.display = 'flex';
+            document.getElementById('newSymbolInput').focus();
+        }
+
+        function openAlarmModal(sym, name) {
+            targetAlarmSymbol = sym;
+            const modal = document.getElementById('alarmModal');
+            document.getElementById('alarmModalTitle').innerText = `${name} - ${i18n[currentLang].settingsAlarm}`;
+            
+            const conf = alarms[sym] || {};
+            document.getElementById('alarmTargetPrice').value = conf.targetPrice || '';
+            document.getElementById('alarmVolumeThreshold').value = conf.volumeThreshold || '';
+            const modeEl = document.querySelector(`input[name="alarmMode"][value="${conf.mode || 'once'}"]`);
+            if (modeEl) modeEl.checked = true;
+
+            renderActiveAlarmsList(sym);
+            modal.style.display = 'flex';
+        }
+
+        function renderActiveAlarmsList(sym) {
+            const box = document.getElementById('activeAlarmsBox');
+            const list = document.getElementById('activeAlarmsList');
+            const conf = alarms[sym];
+
+            if (conf && (conf.targetPrice || conf.volumeThreshold)) {
+                box.style.display = 'block';
+                list.innerHTML = '';
+                const t = i18n[currentLang];
+
+                if(conf.targetPrice) {
+                    list.innerHTML += `
+                        <div class="alarm-item">
+                            <span>🎯 ${t.alarmTargetText}: $${conf.targetPrice}</span>
+                            <span class="alarm-delete" onclick="clearAlarmProp('${sym}', 'targetPrice')">✕</span>
+                        </div>
+                    `;
+                }
+                if(conf.volumeThreshold) {
+                    list.innerHTML += `
+                        <div class="alarm-item">
+                            <span>🐋 ${t.alarmVolText}: $${conf.volumeThreshold.toLocaleString()}</span>
+                            <span class="alarm-delete" onclick="clearAlarmProp('${sym}', 'volumeThreshold')">✕</span>
+                        </div>
+                    `;
+                }
+            } else {
+                box.style.display = 'none';
+            }
+        }
+
+        function clearAlarmProp(sym, prop) {
+            if (alarms[sym]) {
+                delete alarms[sym][prop];
+                renderActiveAlarmsList(sym);
+                renderGrid();
+            }
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+            if (modalId === 'addModal') {
+                document.getElementById('newSymbolInput').value = '';
+                document.getElementById('searchResults').classList.remove('active');
+            }
+        }
+
+        function saveAlarmSettings() {
+            const targetPrice = parseFloat(document.getElementById('alarmTargetPrice').value);
+            const volumeThreshold = parseFloat(document.getElementById('alarmVolumeThreshold').value);
+            const mode = document.querySelector('input[name="alarmMode"]:checked').value;
+
+            if (targetAlarmSymbol) {
+                alarms[targetAlarmSymbol] = {
+                    targetPrice: targetPrice || null,
+                    volumeThreshold: volumeThreshold || null,
+                    mode: mode
+                };
+                
+                askNotifyPermission();
+                const msg = i18n[currentLang].toastSaved.replace('{sym}', keyLabel(targetAlarmSymbol));
+                showToast(msg);
+                renderGrid();
+            }
+
+            closeModal('alarmModal');
+        }
+
+        function removeCurrentSymbol() {
+            if (!targetAlarmSymbol) return;
+
+            const currentList = getCurrentList();
+            currentList.symbols = currentList.symbols.filter(s => ik(s.exchange, s.symbol) !== targetAlarmSymbol);
+            
+            delete alarms[targetAlarmSymbol];
+
+            const msg = i18n[currentLang].toastRemoved.replace('{sym}', keyLabel(targetAlarmSymbol));
+            showToast(msg);
+
+            closeModal('alarmModal');
+
+            if (currentList.symbols.length > 0) {
+                selectSymbol(currentList.symbols[0].symbol, currentList.symbols[0].name, currentList.symbols[0].exchange || 'BINANCE');
+            } else {
+                selectedSymbol = '';
+                updateLiveBoardTitle('---');
+            }
+
+            renderGrid();
+        }
+
+        // Tıklama arama alanının dışındaysa dropdown'ı kapat
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.form-group')) {
+                searchResults.classList.remove('active');
+            }
+        });
+
+        // Başlangıç Kurulumları
+        changeLanguage(currentLang);
+        (function initBoard() {
+            const cur = getCurrentList() || lists[0];
+            const it = cur && (cur.symbols.find(s => s.symbol === selectedSymbol) || cur.symbols[0]);
+            if (it) selectSymbol(it.symbol, it.name, it.exchange || 'BINANCE');
+        })();
+        // Telefon uykudan / sekme arka plandan dönünce bağlantıları tazele
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) return;
+            if (!tickerSockets.length || tickerSockets.some(w => w.readyState > 1)) connectTickerStream();
+            if (selectedSymbol && (!depthWs || depthWs.readyState > 1)) connectDepthStream();
+        });
+        window.addEventListener('online', () => { connectTickerStream(); if (selectedSymbol) connectDepthStream(); });
+    </script>
+</body>
+</html>
