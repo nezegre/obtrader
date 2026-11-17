@@ -1325,45 +1325,86 @@
         const newSymbolInput = document.getElementById('newSymbolInput');
         const searchResults = document.getElementById('searchResults');
 
-        newSymbolInput.addEventListener('input', function(e) {
-            const query = e.target.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+        /* BORSA PİYASA LİSTELERİ: sadece gerçekten listelenen pariteleri göster */
+        const MKT_KEY = 'obtrader_markets_v1';
+        const MARKETS = {};
+        let marketsLoading = null;
+        function loadMarkets() {
+            if (marketsLoading) return marketsLoading;
+            try {
+                const c = JSON.parse(localStorage.getItem(MKT_KEY) || 'null');
+                if (c && Date.now() - c.t < 6 * 3600e3) { for (const k in c.m) MARKETS[k] = new Set(c.m[k]); }
+            } catch (e) {}
+            const jobs = {
+                BINANCE: async () => (await (await fetch('https://api.binance.com/api/v3/exchangeInfo?permissions=SPOT&symbolStatus=TRADING')).json()).symbols.filter(x => x.quoteAsset === 'USDT').map(x => x.baseAsset),
+                OKX: async () => (await (await fetch('https://www.okx.com/api/v5/public/instruments?instType=SPOT')).json()).data.filter(x => x.quoteCcy === 'USDT' && x.state === 'live').map(x => x.baseCcy),
+                COINBASE: async () => (await (await fetch('https://api.exchange.coinbase.com/products')).json()).filter(x => x.quote_currency === 'USD' && !x.trading_disabled && x.status === 'online').map(x => x.base_currency),
+                KUCOIN: async () => (await (await fetch('https://cryptoverifly.com/api/markets.php?ex=kucoin')).json()),
+                BITFINEX: async () => (await (await fetch('https://cryptoverifly.com/api/markets.php?ex=bitfinex')).json())
+            };
+            marketsLoading = Promise.all(Object.entries(jobs).map(async ([ex, f]) => {
+                if (MARKETS[ex] && MARKETS[ex].size) return;
+                try { const arr = await f(); if (arr && arr.length) MARKETS[ex] = new Set(arr.map(b => String(b).toUpperCase())); } catch (e) {}
+            })).then(() => {
+                try { const m = {}; for (const k in MARKETS) m[k] = [...MARKETS[k]]; localStorage.setItem(MKT_KEY, JSON.stringify({ t: Date.now(), m })); } catch (e) {}
+                marketsLoading = null;
+            });
+            return marketsLoading;
+        }
+        // Bitfinex listesi alınamazsa tek tek canlı kontrol
+        const bfxCache = {};
+        function bitfinexHas(base) {
+            if (MARKETS.BITFINEX) return Promise.resolve(MARKETS.BITFINEX.has(base));
+            if (base in bfxCache) return Promise.resolve(bfxCache[base]);
+            return new Promise(res => {
+                let done = false; const fin = v => { if (done) return; done = true; bfxCache[base] = v; try { ws.close(); } catch (e) {} res(v); };
+                const ws = new WebSocket('wss://api-pub.bitfinex.com/ws/2');
+                ws.onopen = () => ws.send(JSON.stringify({ event: 'subscribe', channel: 'ticker', symbol: exSym('BITFINEX', base) }));
+                ws.onmessage = e => { const d = JSON.parse(e.data); if (d.event === 'subscribed') fin(true); else if (d.event === 'error') fin(false); };
+                ws.onerror = () => fin(false);
+                setTimeout(() => fin(false), 4000);
+            });
+        }
+
+        let searchSeq = 0;
+        newSymbolInput.addEventListener('focus', loadMarkets);
+        newSymbolInput.addEventListener('input', async function(e) {
+            const seq = ++searchSeq;
+            const query = baseOf(e.target.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, ''));
             searchResults.innerHTML = '';
+            if (!query) { searchResults.classList.remove('active'); return; }
+            searchResults.innerHTML = `<div class="no-result-item">…</div>`;
+            searchResults.classList.add('active');
+            await loadMarkets();
+            if (seq !== searchSeq) return;
 
-            if (!query) {
-                searchResults.classList.remove('active');
-                return;
-            }
-
-            // Arama ifadesine USDT ekleme kontrolü
-            let targetCoin = query;
-            if (!targetCoin.endsWith('USDT')) targetCoin += 'USDT';
+            // Eşleşen coinler: önce tam eşleşme, sonra baştan eşleşenler
+            const all = new Set();
+            Object.values(MARKETS).forEach(set => set.forEach(b => { if (b.startsWith(query)) all.add(b); }));
+            all.add(query);
+            const bases = [...all].sort((a, b) => (a === query ? -1 : b === query ? 1 : a.length - b.length || a.localeCompare(b))).slice(0, 8);
 
             const results = [];
-            supportedExchanges.forEach(ex => {
-                results.push({
-                    rawSymbol: targetCoin.toLowerCase(),
-                    displayName: pairName(targetCoin, ex),
-                    exchange: ex
-                });
-            });
-
+            for (const b of bases) {
+                for (const ex of supportedExchanges) {
+                    let ok = MARKETS[ex] ? MARKETS[ex].has(b) : false;
+                    if (ex === 'BITFINEX' && !MARKETS.BITFINEX && b === query) ok = await bitfinexHas(b);
+                    if (ok) results.push({ rawSymbol: b.toLowerCase() + 'usdt', displayName: pairName(b, ex), exchange: ex });
+                }
+            }
+            if (seq !== searchSeq) return;
+            searchResults.innerHTML = '';
             if (results.length === 0) {
                 searchResults.innerHTML = `<div class="no-result-item">${i18n[currentLang].notFound}</div>`;
             } else {
-                results.forEach(res => {
+                results.slice(0, 40).forEach(res => {
                     const itemDiv = document.createElement('div');
                     itemDiv.className = 'search-item';
-                    itemDiv.innerHTML = `
-                        <span>${res.displayName}</span>
-                        <span class="search-exchange-tag">${res.exchange}</span>
-                    `;
-                    itemDiv.onclick = () => {
-                        addSelectedPair(res.rawSymbol, res.displayName, res.exchange);
-                    };
+                    itemDiv.innerHTML = `<span>${res.displayName}</span><span class="search-exchange-tag">${res.exchange}</span>`;
+                    itemDiv.onclick = () => addSelectedPair(res.rawSymbol, res.displayName, res.exchange);
                     searchResults.appendChild(itemDiv);
                 });
             }
-
             searchResults.classList.add('active');
         });
 
