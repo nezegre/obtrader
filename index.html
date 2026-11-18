@@ -136,6 +136,12 @@
         .card-add-icon { font-size: 28px; color: #16f7d1; font-weight: 300; }
 
         /* YAN YANA YAPI / GRAFİK VE TAHTA KAPSAYICISI */
+        .detail-bar { display: none; }
+        #detailView:not(.open) { display: none !important; }
+        #detailView.open { position: fixed; inset: 0; z-index: 900; background: #0b0e11; overflow-y: auto; margin: 0; padding: 0 10px 20px; }
+        #detailView.open .detail-bar { display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 5; background: #0b0e11; padding: 12px 0 8px; font-weight: bold; color: #eaecef; }
+        .detail-back { background: #1e2329; color: #eaecef; border: 1px solid #2b313a; border-radius: 6px; padding: 6px 12px; font-size: 16px; cursor: pointer; }
+        body.detail-open { overflow: hidden; }
         .chart-ob-wrapper {
             display: flex;
             flex-direction: column;
@@ -373,7 +379,8 @@
     <div class="watch-grid" id="watchGrid"></div>
 
     <!-- GRAFİK VE TAHTA YAN YANA / ÜST ÜSTE ALANI -->
-    <div class="chart-ob-wrapper">
+    <div class="chart-ob-wrapper" id="detailView">
+        <div class="detail-bar"><button class="detail-back" onclick="closeDetail()">←</button><span id="detailTitle"></span></div>
         <!-- TRADINGVIEW CHART ALANI -->
         <div class="chart-container-box">
             <div class="chart-header" id="chartSymbolTitle">BTC/USDT Chart</div>
@@ -980,6 +987,7 @@
                 card.onclick = (e) => {
                     if(!e.target.classList.contains('more-btn')) {
                         selectSymbol(item.symbol, item.name, item.exchange || 'BINANCE');
+                        openDetail(keyLabel(key));
                     }
                 };
 
@@ -1314,6 +1322,24 @@
             }
         }
         function selectedKey() { return ik(selectedExchange, selectedSymbol); }
+
+        /* ===== DETAY EKRANI (grafik + tahta) ===== */
+        function openDetail(title) {
+            document.getElementById('detailTitle').innerText = title;
+            document.getElementById('detailView').classList.add('open');
+            document.body.classList.add('detail-open');
+            if (!history.state || !history.state.detail) history.pushState({ detail: 1 }, '');
+            isInitialAsksScrollDone = false;
+            setTimeout(renderTradingViewWidget, 50);
+        }
+        function closeDetail(fromPop) {
+            const v = document.getElementById('detailView');
+            if (!v.classList.contains('open')) return;
+            v.classList.remove('open');
+            document.body.classList.remove('detail-open');
+            if (!fromPop && history.state && history.state.detail) history.back();
+        }
+        window.addEventListener('popstate', () => closeDetail(true));
 
         /* TRADINGVIEW GRAFİK YÜKLEYİCİ */
         function renderTradingViewWidget() {
