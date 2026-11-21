@@ -580,6 +580,7 @@
     <script>
         const i18n = {
             en: {
+                maxLists: "You can create up to {n} lists.",
                 fgTitle: "Crypto Fear & Greed Index",
                 fgEF: "Extreme Fear", fgF: "Fear", fgN: "Neutral", fgG: "Greed", fgEG: "Extreme Greed",
                 domTitle: "Market Dominance",
@@ -631,6 +632,7 @@
                 notFound: "Coin not found"
             },
             zh: {
+                maxLists: "最多可创建 {n} 个列表。",
                 fgTitle: "加密货币恐惧与贪婪指数",
                 fgEF: "极度恐惧", fgF: "恐惧", fgN: "中性", fgG: "贪婪", fgEG: "极度贪婪",
                 domTitle: "市值占比",
@@ -678,6 +680,7 @@
                 notFound: "未找到币种"
             },
             ru: {
+                maxLists: "Можно создать не более {n} списков.",
                 fgTitle: "Индекс страха и жадности",
                 fgEF: "Крайний страх", fgF: "Страх", fgN: "Нейтрально", fgG: "Жадность", fgEG: "Крайняя жадность",
                 domTitle: "Доминация рынка",
@@ -729,6 +732,7 @@
                 notFound: "Монета не найдена"
             },
             tr: {
+                maxLists: "En fazla {n} liste oluşturabilirsin.",
                 fgTitle: "Kripto Korku ve Açgözlülük Endeksi",
                 fgEF: "Aşırı Korku", fgF: "Korku", fgN: "Nötr", fgG: "Açgözlülük", fgEG: "Aşırı Açgözlülük",
                 domTitle: "Piyasa Dominansı",
@@ -937,7 +941,9 @@
             });
         }
 
+        const MAX_LISTS = 5; // ileride: ücretsiz kullanıcıya sınır, Pro'ya daha fazla
         function createNewTab() {
+            if (lists.length >= MAX_LISTS) { const t = i18n[currentLang]; showToast((t.maxLists || i18n.en.maxLists).replace('{n}', MAX_LISTS)); return; }
             const newId = 'list_' + Date.now();
             const t = i18n[currentLang];
             const newTitle = `${t.listPrefix} ${lists.length + 1}`;
@@ -955,8 +961,13 @@
             switchTab(newId);
         }
 
+        function updateModules() {
+            const onMain = !lists.length || activeListId === lists[0].id;
+            ['asBox', 'fgBox', 'domBox'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = onMain ? '' : 'none'; });
+        }
         function switchTab(listId) {
             activeListId = listId;
+            updateModules();
             renderTabs();
             
             const currentList = getCurrentList();
@@ -1815,7 +1826,7 @@
 
         // Başlangıç Kurulumları
         changeLanguage(currentLang);
-        loadAltSeason(); loadFG(); loadDom();
+        updateModules(); loadAltSeason(); loadFG(); loadDom();
         (function initBoard() {
             const cur = getCurrentList() || lists[0];
             const it = cur && (cur.symbols.find(s => s.symbol === selectedSymbol) || cur.symbols[0]);
