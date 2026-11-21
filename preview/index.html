@@ -34,7 +34,7 @@
         }
 
         /* Kategori Sekmeleri */
-        .tabs-container { display: flex; align-items: center; border-bottom: 1px solid #1e2329; margin-bottom: 12px; gap: 8px; overflow-x: auto; }
+        .tabs-container { display: flex; align-items: center; border-bottom: 1px solid #1e2329; margin-bottom: 12px; gap: 8px; overflow-x: auto; padding-top: 6px; }
         .tabs { display: flex; gap: 12px; font-size: 13px; color: #848e9c; }
         .tab { padding: 6px 10px; cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.2s; }
         .tab.active { color: #fff; font-weight: bold; border-bottom-color: #16f7d1; }
@@ -62,6 +62,10 @@
             grid-template-columns: repeat(2, minmax(0, 1fr)); 
             gap: 8px; 
             margin-bottom: 15px; 
+            max-height: 384px; /* 4 satır x 90px + boşluklar */
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            scrollbar-width: thin;
         }
 
         @media (min-width: 768px) {
@@ -330,6 +334,34 @@
         .active-alarms-title { font-size: 11px; color: #16f7d1; font-weight: bold; margin-bottom: 6px; }
         .alarm-item { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #eaecef; background: #1a1d24; padding: 5px 8px; border-radius: 3px; margin-bottom: 4px; }
         .alarm-delete { color: #f6465d; cursor: pointer; font-weight: bold; }
+        .btn-all-alarms { position: sticky; right: 0; margin-left: auto; flex-shrink: 0; background: #121418; color: #16f7d1; border: 1px solid rgba(22,247,209,0.3); width: 30px; height: 26px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; margin-bottom: 4px; }
+        .alarm-count { position: absolute; top: -6px; right: -4px; background: #f6465d; color: #fff; font-size: 9px; font-weight: bold; min-width: 14px; height: 14px; border-radius: 7px; display: none; align-items: center; justify-content: center; padding: 0 3px; }
+        .aa-row { display: flex; align-items: center; gap: 8px; background: #1a1d24; border-radius: 4px; padding: 8px 10px; margin-bottom: 6px; font-size: 12px; color: #eaecef; cursor: pointer; }
+        .aa-row b { color: #fff; }
+        .aa-row .aa-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .aa-row .aa-sub { color: #848e9c; font-size: 11px; }
+        .aa-empty { color: #848e9c; font-size: 12px; text-align: center; padding: 14px 0; }
+        /* ALTCOIN SEZONU */
+        .as-box { background: #121418; border: 1px solid #1e2329; border-radius: 8px; padding: 12px; margin-bottom: 15px; }
+        .as-head { display: flex; justify-content: space-between; align-items: baseline; }
+        .as-title { font-size: 13px; font-weight: 700; color: #fff; }
+        .as-val { font-size: 22px; font-weight: 800; color: #fff; }
+        .as-val small { font-size: 12px; color: #848e9c; font-weight: 600; }
+        .as-labels { display: flex; justify-content: space-between; font-size: 11px; color: #848e9c; margin: 10px 0 6px; }
+        .as-bar { position: relative; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #f6465d 0%, #f6465d 25%, #f98a97 25%, #f98a97 50%, #7fe6c0 50%, #7fe6c0 75%, #0ecb81 75%, #0ecb81 100%); }
+        .as-mark { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 3px solid #0b0e11; transform: translate(-50%, -50%); box-shadow: 0 0 0 1px #848e9c; transition: left 0.6s; }
+        .mod-title { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 8px; display: block; }
+        .fg-wrap { display: flex; flex-direction: column; align-items: center; }
+        .fg-num { font-size: 34px; font-weight: 800; fill: #fff; }
+        .fg-lbl { font-size: 13px; font-weight: 700; margin-top: -4px; }
+        .dom-row { display: grid; grid-template-columns: 70px 1fr 56px; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid #1e2329; font-size: 12px; }
+        .dom-row:first-of-type { border-top: none; }
+        .dom-name { color: #eaecef; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+        .dom-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .dom-track { height: 6px; background: #1e2329; border-radius: 3px; overflow: hidden; }
+        .dom-fill { height: 100%; border-radius: 3px; transition: width 0.6s; }
+        .dom-val { text-align: right; color: #fff; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .as-foot { font-size: 10px; color: #5e6673; margin-top: 8px; display: flex; justify-content: space-between; gap: 8px; }
 
         .modal-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 15px; }
         .btn { padding: 10px 16px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; font-size: 12px; }
@@ -369,21 +401,50 @@
         <select class="lang-select" id="langSelect" onchange="changeLanguage(this.value)">
             <option value="en" selected>EN 🇺🇸</option>
             <option value="zh">ZH 🇨🇳</option>
+            <option value="ru">RU 🇷🇺</option>
             <option value="tr">TR 🇹🇷</option>
-            <option value="de">DE 🇩🇪</option>
-            <option value="ko">KO 🇰🇷</option>
-            <option value="es">ES 🇪🇸</option>
-            <option value="ar">AR 🇸🇦</option>
-            <option value="fr">FR 🇫🇷</option>
         </select>
     </div>
 
     <div class="tabs-container">
         <div class="tabs" id="tabList"></div>
         <button class="btn-add-tab" onclick="createNewTab()" id="btnNewTabTitle" title="New List">＋</button>
+        <button class="btn-all-alarms" id="btnAllAlarms" onclick="openAllAlarms()" title="Alarm"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="alarm-count" id="alarmCount"></span></button>
     </div>
 
     <div class="watch-grid" id="watchGrid"></div>
+
+    <div class="as-box" id="asBox">
+        <div class="as-head"><span class="as-title" id="asTitle">Altcoin Season Index</span><span class="as-val" id="asVal">--<small>/100</small></span></div>
+        <div class="as-labels"><span id="asBtc">Bitcoin Season</span><span id="asAlt">Altcoin Season</span></div>
+        <div class="as-bar"><div class="as-mark" id="asMark" style="left:50%; display:none;"></div></div>
+        <div class="as-foot"><span id="asNote"></span><span id="asUpd"></span></div>
+    </div>
+
+    <div class="as-box" id="fgBox">
+        <span class="mod-title" id="fgTitle">Crypto Fear &amp; Greed Index</span>
+        <div class="fg-wrap">
+            <svg viewBox="0 0 200 116" width="220" height="128">
+                <path d="M20.0 100.0 A80 80 0 0 1 41.3 45.6" stroke="#f6465d" stroke-width="14" fill="none"/>
+                <path d="M45.6 41.3 A80 80 0 0 1 84.5 21.5" stroke="#f98a50" stroke-width="14" fill="none"/>
+                <path d="M90.5 20.6 A80 80 0 0 1 109.5 20.6" stroke="#f0c43a" stroke-width="14" fill="none"/>
+                <path d="M115.5 21.5 A80 80 0 0 1 154.4 41.3" stroke="#7fe6c0" stroke-width="14" fill="none"/>
+                <path d="M158.7 45.6 A80 80 0 0 1 180.0 100.0" stroke="#0ecb81" stroke-width="14" fill="none"/>
+                <g id="fgNeedle" style="transform-origin:100px 100px; transform:rotate(-90deg); transition: transform 0.8s;">
+                    <circle cx="100" cy="20" r="8" fill="#fff" stroke="#0b0e11" stroke-width="3"/>
+                </g>
+                <text x="100" y="92" text-anchor="middle" class="fg-num" id="fgNum">--</text>
+            </svg>
+            <div class="fg-lbl" id="fgLbl">&nbsp;</div>
+        </div>
+        <div class="as-foot"><span>alternative.me</span><span id="fgUpd"></span></div>
+    </div>
+
+    <div class="as-box" id="domBox">
+        <span class="mod-title" id="domTitle">Market Dominance</span>
+        <div id="domRows"></div>
+        <div class="as-foot"><span id="domNote"></span><span id="domUpd"></span></div>
+    </div>
 
     <!-- GRAFİK VE TAHTA YAN YANA / ÜST ÜSTE ALANI -->
     <div class="chart-ob-wrapper" id="detailView">
@@ -463,6 +524,14 @@
     </div>
 
     <!-- MODAL: Alarm & Ayarlar -->
+    <div class="modal" id="allAlarmsModal">
+        <div class="modal-content">
+            <span class="modal-close-x" onclick="closeModal('allAlarmsModal')">✕</span>
+            <h3 id="allAlarmsTitle">My Alarms</h3>
+            <div id="allAlarmsList"></div>
+        </div>
+    </div>
+
     <div class="modal" id="alarmModal">
         <div class="modal-content">
             <span class="modal-close-x" onclick="closeModal('alarmModal')">✕</span>
@@ -511,6 +580,19 @@
     <script>
         const i18n = {
             en: {
+                fgTitle: "Crypto Fear & Greed Index",
+                fgEF: "Extreme Fear", fgF: "Fear", fgN: "Neutral", fgG: "Greed", fgEG: "Extreme Greed",
+                domTitle: "Market Dominance",
+                domNote: "ALTS.D = 100 − BTC.D − USDT.D",
+                allAlarms: "My Alarms",
+                noAlarms: "No alarms set.",
+                asTitle: "Altcoin Season Index",
+                asBtc: "Bitcoin Season",
+                asAlt: "Altcoin Season",
+                asNote: "Share of the top 100 coins that outperformed Bitcoin over the last 90 days.",
+                asLoading: "Calculating…",
+                asErr: "Data unavailable",
+                asUpd: "Updated",
                 mainList: "Main List",
                 listPrefix: "List",
                 liveBoard: "Live Order Book",
@@ -549,6 +631,19 @@
                 notFound: "Coin not found"
             },
             zh: {
+                fgTitle: "加密货币恐惧与贪婪指数",
+                fgEF: "极度恐惧", fgF: "恐惧", fgN: "中性", fgG: "贪婪", fgEG: "极度贪婪",
+                domTitle: "市值占比",
+                domNote: "ALTS.D = 100 − BTC.D − USDT.D",
+                allAlarms: "我的预警",
+                noAlarms: "暂无预警。",
+                asTitle: "山寨币季节指数",
+                asBtc: "比特币季",
+                asAlt: "山寨币季",
+                asNote: "过去90天内跑赢比特币的前100个币种占比。",
+                asLoading: "计算中…",
+                asErr: "暂无数据",
+                asUpd: "更新于",
                 mainList: "主列表",
                 listPrefix: "列表",
                 liveBoard: "实时订单簿",
@@ -582,7 +677,71 @@
                 sellText: "卖出",
                 notFound: "未找到币种"
             },
+            ru: {
+                fgTitle: "Индекс страха и жадности",
+                fgEF: "Крайний страх", fgF: "Страх", fgN: "Нейтрально", fgG: "Жадность", fgEG: "Крайняя жадность",
+                domTitle: "Доминация рынка",
+                domNote: "ALTS.D = 100 − BTC.D − USDT.D",
+                allAlarms: "Мои алерты",
+                noAlarms: "Алертов нет.",
+                asTitle: "Индекс сезона альткоинов",
+                asBtc: "Сезон биткоина",
+                asAlt: "Сезон альткоинов",
+                asNote: "Доля монет из топ-100, обогнавших биткоин за последние 90 дней.",
+                asLoading: "Расчёт…",
+                asErr: "Нет данных",
+                asUpd: "Обновлено",
+                mainList: "Основной список",
+                listPrefix: "Список",
+                liveBoard: "Стакан онлайн",
+                depth: "Глубина: 20x20",
+                price: "Цена ($)",
+                amount: "Кол-во",
+                total: "Сумма ($)",
+                addModalTitle: "Добавить пару",
+                coinSymbol: "Тикер монеты",
+                symbolPlaceholder: "Добавить пару (напр. dogeusdt)...",
+                cancel: "Отмена",
+                add: "Добавить",
+                settingsAlarm: "Настройки и алерт",
+                targetPrice: "1. Алерт по цене ($)",
+                whaleVol: "2. Алерт на кита (мин. объём $)",
+                alarmType: "Режим алерта",
+                once: "Однократно",
+                persistent: "Постоянно",
+                activeAlarms: "Активные алерты",
+                close: "Закрыть",
+                saveAlarm: "Сохранить",
+                removeCoin: "Удалить пару из списка",
+                alarmTargetText: "Цель",
+                alarmVolText: "Мин. объём",
+                toastPrice: "🔔 АЛЕРТ: {sym} достиг цены ${target}!",
+                toastWhaleSell: "🚨 КИТ: стена на продажу ${vol} по {sym}!",
+                toastWhaleBuy: "🚨 КИТ: стена на покупку ${vol} по {sym}!",
+                toastRemoved: "{sym} удалён из списка.",
+                toastSaved: "Алерт для {sym} сохранён.",
+                tgBtn: "Уведомлять и при выключенном экране (Telegram)",
+                bgNote: "Алерты в приложении работают только при включённом экране. Для уведомлений при выключенном экране используйте Telegram.",
+                tgHint: "Работает даже при закрытом приложении.",
+                tgNeed: "Сначала введите цену или объём кита.",
+                buyText: "Покупка",
+                sellText: "Продажа",
+                notFound: "Монета не найдена"
+            },
             tr: {
+                fgTitle: "Kripto Korku ve Açgözlülük Endeksi",
+                fgEF: "Aşırı Korku", fgF: "Korku", fgN: "Nötr", fgG: "Açgözlülük", fgEG: "Aşırı Açgözlülük",
+                domTitle: "Piyasa Dominansı",
+                domNote: "ALTS.D = 100 − BTC.D − USDT.D",
+                allAlarms: "Alarmlarım",
+                noAlarms: "Kurulu alarm yok.",
+                asTitle: "Altcoin Sezonu Endeksi",
+                asBtc: "Bitcoin Sezonu",
+                asAlt: "Altcoin Sezonu",
+                asNote: "İlk 100 coinden son 90 günde Bitcoin'den iyi performans gösterenlerin oranı.",
+                asLoading: "Hesaplanıyor…",
+                asErr: "Veri alınamadı",
+                asUpd: "Güncellendi",
                 mainList: "Ana Listem",
                 listPrefix: "Liste",
                 liveBoard: "Canlı Tahta",
@@ -619,181 +778,12 @@
                 buyText: "Alım",
                 sellText: "Satım",
                 notFound: "Coin bulunamadı"
-            },
-            de: {
-                mainList: "Hauptliste",
-                listPrefix: "Liste",
-                liveBoard: "Live-Orderbuch",
-                depth: "Tiefe: 20x20",
-                price: "Preis ($)",
-                amount: "Menge",
-                total: "Gesamt ($)",
-                addModalTitle: "Paar zur Liste hinzufügen",
-                coinSymbol: "Coin-Symbol",
-                symbolPlaceholder: "Paar hinzufügen (z.B. dogeusdt)...",
-                cancel: "Abbrechen",
-                add: "Hinzufügen",
-                settingsAlarm: "Einstellungen & Alarm",
-                targetPrice: "1. Zielpreis-Auslöser ($)",
-                whaleVol: "2. Wal-Order-Alarm (Min $ Volumen)",
-                alarmType: "Alarmmodus",
-                once: "Einmalig",
-                persistent: "Dauerhaft",
-                activeAlarms: "Aktive Alarme",
-                close: "Schließen",
-                saveAlarm: "Alarm Speichern",
-                removeCoin: "Dieses Paar aus Liste entfernen",
-                alarmTargetText: "Zielpreis",
-                alarmVolText: "Min Vol",
-                toastPrice: "🔔 ALARM: {sym} hat Zielpreis von ${target} erreicht!",
-                toastWhaleSell: "🚨 WAL-ORDER: ${vol} VERKAUFS-Wand bei {sym}!",
-                toastWhaleBuy: "🚨 WAL-ORDER: ${vol} KAUF-Wand bei {sym}!",
-                toastRemoved: "{sym} entfernt.",
-                toastSaved: "Alarm gespeichert für {sym}.",
-                buyText: "Kauf",
-                sellText: "Verkauf",
-                notFound: "Münze nicht gefunden"
-            },
-            ko: {
-                mainList: "메인 리스트",
-                listPrefix: "리스트",
-                liveBoard: "실시간 호가창",
-                depth: "깊이: 20x20",
-                price: "가격 ($)",
-                amount: "수량",
-                total: "총액 ($)",
-                addModalTitle: "페어 추가하기",
-                coinSymbol: "코인 심볼",
-                symbolPlaceholder: "페어 추가 (예: dogeusdt)...",
-                cancel: "취소",
-                add: "추가",
-                settingsAlarm: "설정 및 알람",
-                targetPrice: "1. 목표 가격 알람 ($)",
-                whaleVol: "2. 고래 주문 알람 (최소 $ 볼륨)",
-                alarmType: "알람 모드",
-                once: "1회성",
-                persistent: "지속",
-                activeAlarms: "활성화된 알람",
-                close: "닫기",
-                saveAlarm: "알람 저장",
-                removeCoin: "이 페어 목록에서 삭제",
-                alarmTargetText: "목표가",
-                alarmVolText: "최소 볼륨",
-                toastPrice: "🔔 알람: {sym} 목표가 ${target} 도달!",
-                toastWhaleSell: "🚨 고래 주문: {sym} 에 ${vol} 매도 벽 감지!",
-                toastWhaleBuy: "🚨 고래 주문: {sym} 에 ${vol} 매수 벽 감지!",
-                toastRemoved: "{sym} 삭제됨.",
-                toastSaved: "{sym} 알람 저장됨.",
-                buyText: "매수",
-                sellText: "매도",
-                notFound: "코인을 찾을 수 없습니다"
-            },
-            es: {
-                mainList: "Mi Lista",
-                listPrefix: "Lista",
-                liveBoard: "Libro de Órdenes",
-                depth: "Profundidad: 20x20",
-                price: "Precio ($)",
-                amount: "Cantidad",
-                total: "Total ($)",
-                addModalTitle: "Añadir Par a la Lista",
-                coinSymbol: "Símbolo de Cripto",
-                symbolPlaceholder: "Añadir par (ej: dogeusdt)...",
-                cancel: "Cancelar",
-                add: "Añadir",
-                settingsAlarm: "Ajustes y Alarma",
-                targetPrice: "1. Alerta de Precio Objetivo ($)",
-                whaleVol: "2. Alerta de Orden Ballena (Volumen Mín $)",
-                alarmType: "Modo de Alarma",
-                once: "Una vez",
-                persistent: "Persistente",
-                activeAlarms: "Alarmas Activas",
-                close: "Cerrar",
-                saveAlarm: "Guardar Alarma",
-                removeCoin: "Eliminar este par de la lista",
-                alarmTargetText: "Precio Obj.",
-                alarmVolText: "Vol Mínimo",
-                toastPrice: "🔔 ALARMA: ¡{sym} alcanzó el precio target de ${target}!",
-                toastWhaleSell: "🚨 ORDEN BALLENA: ¡Muro de VENTA de ${vol} en {sym}!",
-                toastWhaleBuy: "🚨 ORDEN BALLENA: ¡Muro de COMPRA de ${vol} en {sym}!",
-                toastRemoved: "{sym} eliminado.",
-                toastSaved: "Alarma guardada para {sym}.",
-                buyText: "Compra",
-                sellText: "Venta",
-                notFound: "Coin no encontrado"
-            },
-            ar: {
-                mainList: "قائمتي الرئيسية",
-                listPrefix: "قائمة",
-                liveBoard: "سجل الطلبات المباشر",
-                depth: "العمق: 20x20",
-                price: "السعر ($)",
-                amount: "الكمية",
-                total: "الإجمالي ($)",
-                addModalTitle: "إضافة زوج إلى القائمة",
-                coinSymbol: "رمز العملة",
-                symbolPlaceholder: "إضافة زوج (مثال: dogeusdt)...",
-                cancel: "إلغاء",
-                add: "إضافة",
-                settingsAlarm: "الإعدادات والتنبيه",
-                targetPrice: "1. سعر الهدف للتنبيه ($)",
-                whaleVol: "2. تنبيه طلبات الحيتان (أقل حجم $)",
-                alarmType: "وضع التنبيه",
-                once: "مرة واحدة",
-                persistent: "مستمر",
-                activeAlarms: "التنبيهات النشطة",
-                close: "إغلاق",
-                saveAlarm: "حفظ التنبيه",
-                removeCoin: "إزالة هذا الزوج من القائمة",
-                alarmTargetText: "السعر Target",
-                alarmVolText: "أدنى حجم",
-                toastPrice: "🔔 تنبيه: وصلت {sym} إلى السعر المستهدف ${target}!",
-                toastWhaleSell: "🚨 طلب حوت: جدار بيع بقيمة ${vol} على {sym}!",
-                toastWhaleBuy: "🚨 طلب حوت: جدار شراء بقيمة ${vol} على {sym}!",
-                toastRemoved: "تمت إزالة {sym}.",
-                toastSaved: "تم حفظ التنبيه لـ {sym}.",
-                buyText: "شراء",
-                sellText: "بيع",
-                notFound: "لم يتم العثور على العملة"
-            },
-            fr: {
-                mainList: "Liste Principale",
-                listPrefix: "Liste",
-                liveBoard: "Carnet d'ordres",
-                depth: "Profondeur: 20x20",
-                price: "Prix ($)",
-                amount: "Quantité",
-                total: "Total ($)",
-                addModalTitle: "Ajouter une Paire",
-                coinSymbol: "Symbole Coin",
-                symbolPlaceholder: "Ajouter paire (ex: dogeusdt)...",
-                cancel: "Annuler",
-                add: "Ajouter",
-                settingsAlarm: "Paramètres & Alarme",
-                targetPrice: "1. Déclencheur Prix Cible ($)",
-                whaleVol: "2. Alerte Ordre Baleine (Vol Min $)",
-                alarmType: "Mode Alarme",
-                once: "Une Fois",
-                persistent: "Persistant",
-                activeAlarms: "Alarmes Actives",
-                close: "Fermer",
-                saveAlarm: "Enregistrer l'Alarme",
-                removeCoin: "Retirer cette paire de la liste",
-                alarmTargetText: "Prix Cible",
-                alarmVolText: "Vol Min",
-                toastPrice: "🔔 ALARME: {sym} a atteint le prix cible de ${target}!",
-                toastWhaleSell: "🚨 ORDRE BALEINE: Mur de VENTE de ${vol} sur {sym}!",
-                toastWhaleBuy: "🚨 ORDRE BALEINE: Mur d'ACHAT de ${vol} sur {sym}!",
-                toastRemoved: "{sym} retiré.",
-                toastSaved: "Alarme enregistrée pour {sym}.",
-                buyText: "Achat",
-                sellText: "Vente",
-                notFound: "Pièce non trouvée"
             }
+
         };
 
         const urlParams = new URLSearchParams(window.location.search);
-        let currentLang = urlParams.get('lang') || 'en';
+        let currentLang = i18n[urlParams.get('lang')] ? urlParams.get('lang') : 'en';
         if (!i18n[currentLang]) currentLang = 'en';
 
         // Desteklenen Borsalar
@@ -889,6 +879,9 @@
             document.getElementById('lblModePersistent').innerText = t.persistent;
             document.getElementById('lblActiveAlarms').innerText = t.activeAlarms;
             document.getElementById('bgNote').innerText = t.bgNote || i18n.en.bgNote;
+            ['allAlarms:allAlarmsTitle', 'asTitle', 'asBtc', 'asAlt', 'asNote', 'fgTitle', 'domTitle', 'domNote'].forEach(x => { const [k, id] = x.split(':'); const el = document.getElementById(id || k); if (el) el.innerText = t[k] || i18n.en[k]; });
+            if (typeof renderAltSeason === 'function') { renderAltSeason(); renderFG(); renderDom(); }
+            if (document.getElementById('allAlarmsModal').style.display === 'flex') renderAllAlarms();
             document.getElementById('btnClose').innerText = t.close;
             document.getElementById('btnSaveAlarm').innerText = t.saveAlarm;
             document.getElementById('btnTelegram').innerText = t.tgBtn || i18n.en.tgBtn;
@@ -1038,6 +1031,35 @@
             grid.appendChild(addCard);
 
             connectTickerStream();
+            updateAlarmCount();
+        }
+
+        function activeAlarmKeys() { return Object.keys(alarms).filter(k => alarms[k] && (alarms[k].targetPrice || alarms[k].volumeThreshold)); }
+        function updateAlarmCount() {
+            const el = document.getElementById('alarmCount'); if (!el) return;
+            const n = activeAlarmKeys().reduce((c, k) => c + (alarms[k].targetPrice ? 1 : 0) + (alarms[k].volumeThreshold ? 1 : 0), 0);
+            el.innerText = n; el.style.display = n ? 'flex' : 'none';
+        }
+        function openAllAlarms() { renderAllAlarms(); document.getElementById('allAlarmsModal').style.display = 'flex'; }
+        function renderAllAlarms() {
+            const t = i18n[currentLang], box = document.getElementById('allAlarmsList');
+            const keys = activeAlarmKeys();
+            if (!keys.length) { box.innerHTML = `<div class="aa-empty">${t.noAlarms}</div>`; return; }
+            box.innerHTML = '';
+            keys.forEach(k => {
+                const a = alarms[k], mode = a.mode === 'persistent' ? t.persistent : t.once;
+                const parts = [];
+                if (a.targetPrice) parts.push(['targetPrice', `🎯 ${t.alarmTargetText}: $${a.targetPrice}`]);
+                if (a.volumeThreshold) parts.push(['volumeThreshold', `🐋 ${t.alarmVolText}: $${Number(a.volumeThreshold).toLocaleString('en-US')}`]);
+                parts.forEach(([prop, txt]) => {
+                    const row = document.createElement('div');
+                    row.className = 'aa-row';
+                    row.innerHTML = `<div class="aa-info"><b>${keyLabel(k)}</b><span class="aa-sub">${txt} · ${mode}</span></div><span class="alarm-delete">✕</span>`;
+                    row.onclick = () => { closeModal('allAlarmsModal'); openAlarmModal(k, keyLabel(k)); };
+                    row.querySelector('.alarm-delete').onclick = e => { e.stopPropagation(); delete a[prop]; persistState(); renderGrid(); renderAllAlarms(); };
+                    box.appendChild(row);
+                });
+            });
         }
 
         /* ===== KART SÜRÜKLE-BIRAK (web + mobil) ===== */
@@ -1610,6 +1632,7 @@
                 delete alarms[sym][prop];
                 renderActiveAlarmsList(sym);
                 renderGrid();
+                persistState();
             }
         }
 
@@ -1695,8 +1718,104 @@
             }
         });
 
+        /* ===== ALTCOIN SEZONU ENDEKSİ (ilk 100, 90 gün, BTC'ye göre) ===== */
+        const AS_KEY = 'obtrader_altseason_v1', AS_TTL = 6 * 3600 * 1000;
+        let asData = null; try { asData = JSON.parse(localStorage.getItem(AS_KEY) || 'null'); } catch (e) {}
+        const STABLE = /usd|eur|dai$|^frax|^gho$|^xaut$|^paxg$/i, WRAP = /wrapped|staked|bridged|restaked|liquid|binance-peg/i;
+        async function asCandidates() {
+            try {
+                const r = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=150&page=1');
+                const j = await r.json();
+                if (Array.isArray(j) && j.length) return j.filter(c => c.symbol && !STABLE.test(c.symbol) && !WRAP.test(c.name) && c.symbol.toLowerCase() !== 'btc').map(c => c.symbol.toUpperCase());
+            } catch (e) {}
+            // yedek: Binance hacim sıralaması
+            const t = await (await fetch('https://api.binance.com/api/v3/ticker/24hr')).json();
+            return t.filter(x => /USDT$/.test(x.symbol)).map(x => [x.symbol.replace(/USDT$/, ''), +x.quoteVolume])
+                .filter(([b]) => b !== 'BTC' && !STABLE.test(b) && !/(UP|DOWN|BULL|BEAR)$/.test(b)).sort((a, b) => b[1] - a[1]).map(x => x[0]);
+        }
+        async function perf90(base) {
+            try {
+                const k = await (await fetch(`https://api.binance.com/api/v3/klines?symbol=${base}USDT&interval=1d&limit=91`)).json();
+                if (!Array.isArray(k) || k.length < 91) return null;
+                return +k[k.length - 1][4] / +k[0][4] - 1;
+            } catch (e) { return null; }
+        }
+        async function calcAltSeason() {
+            const btc = await perf90('BTC'); if (btc === null) throw 0;
+            const cands = await asCandidates();
+            let beat = 0, n = 0, i = 0;
+            while (n < 100 && i < cands.length) {
+                const batch = cands.slice(i, i + 10); i += 10;
+                const res = await Promise.all(batch.map(perf90));
+                for (const v of res) { if (v === null || n >= 100) continue; n++; if (v > btc) beat++; }
+            }
+            if (n < 50) throw 0;
+            return { v: Math.round(beat / n * 100), t: Date.now() };
+        }
+        function renderAltSeason(err) {
+            const t = i18n[currentLang], val = document.getElementById('asVal'), mk = document.getElementById('asMark'), up = document.getElementById('asUpd');
+            if (asData) {
+                val.innerHTML = `${asData.v}<small>/100</small>`;
+                mk.style.display = 'block'; mk.style.left = asData.v + '%';
+                const d = new Date(asData.t);
+                up.innerText = `${t.asUpd || i18n.en.asUpd}: ${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+            } else up.innerText = err ? (t.asErr || i18n.en.asErr) : (t.asLoading || i18n.en.asLoading);
+        }
+        async function loadAltSeason() {
+            renderAltSeason();
+            if (asData && Date.now() - asData.t < AS_TTL) return;
+            try { asData = await calcAltSeason(); try { localStorage.setItem(AS_KEY, JSON.stringify(asData)); } catch (e) {} renderAltSeason(); }
+            catch (e) { renderAltSeason(true); }
+        }
+
+        /* ===== KORKU & AÇGÖZLÜLÜK + DOMİNANS ===== */
+        function cacheGet(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
+        function cacheSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+        function hhmm(ts) { const d = new Date(ts); return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+        let fgData = cacheGet('obtrader_fg_v1'), domData = cacheGet('obtrader_dom_v1');
+        const FG_COL = ['#f6465d', '#f98a50', '#f0c43a', '#7fe6c0', '#0ecb81'];
+        function fgBand(v) { return v < 25 ? 0 : v < 45 ? 1 : v <= 55 ? 2 : v <= 75 ? 3 : 4; }
+        function renderFG() {
+            if (!fgData) return;
+            const t = i18n[currentLang], b = fgBand(fgData.v);
+            document.getElementById('fgNum').textContent = fgData.v;
+            document.getElementById('fgNeedle').style.transform = `rotate(${fgData.v * 1.8 - 90}deg)`;
+            const l = document.getElementById('fgLbl');
+            l.innerText = t[['fgEF', 'fgF', 'fgN', 'fgG', 'fgEG'][b]]; l.style.color = FG_COL[b];
+            document.getElementById('fgUpd').innerText = `${t.asUpd || i18n.en.asUpd}: ${hhmm(fgData.t)}`;
+        }
+        function renderDom() {
+            if (!domData) return;
+            const t = i18n[currentLang];
+            const rows = [['BTC.D', domData.btc, '#f7931a'], ['USDT.D', domData.usdt, '#26a17b'], ['ALTS.D', domData.alts, '#16f7d1']];
+            document.getElementById('domRows').innerHTML = rows.map(([n, v, c]) =>
+                `<div class="dom-row"><span class="dom-name"><span class="dom-dot" style="background:${c}"></span>${n}</span><div class="dom-track"><div class="dom-fill" style="width:${v}%;background:${c}"></div></div><span class="dom-val">${v.toFixed(2)}%</span></div>`).join('');
+            document.getElementById('domUpd').innerText = `${t.asUpd || i18n.en.asUpd}: ${hhmm(domData.t)}`;
+        }
+        async function loadFG() {
+            renderFG();
+            if (fgData && Date.now() - fgData.t < 3600e3) return;
+            try {
+                const j = await (await fetch('https://api.alternative.me/fng/?limit=1')).json();
+                const v = +j.data[0].value; if (!isFinite(v)) return;
+                fgData = { v, t: Date.now() }; cacheSet('obtrader_fg_v1', fgData); renderFG();
+            } catch (e) {}
+        }
+        async function loadDom() {
+            renderDom();
+            if (domData && Date.now() - domData.t < 600e3) return;
+            try {
+                const j = await (await fetch('https://api.coingecko.com/api/v3/global')).json();
+                const m = j.data.market_cap_percentage, btc = +m.btc, usdt = +m.usdt;
+                if (!isFinite(btc) || !isFinite(usdt)) return;
+                domData = { btc, usdt, alts: Math.max(0, 100 - btc - usdt), t: Date.now() }; cacheSet('obtrader_dom_v1', domData); renderDom();
+            } catch (e) {}
+        }
+        setInterval(() => { if (!document.hidden) { loadFG(); loadDom(); } }, 300e3);
+
         // Başlangıç Kurulumları
         changeLanguage(currentLang);
+        loadAltSeason(); loadFG(); loadDom();
         (function initBoard() {
             const cur = getCurrentList() || lists[0];
             const it = cur && (cur.symbols.find(s => s.symbol === selectedSymbol) || cur.symbols[0]);
