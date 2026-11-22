@@ -1971,6 +1971,10 @@
         }
         setInterval(() => { if (!document.hidden) { loadFG(); loadDom(); } }, 300e3);
 
+        // Pencere dışına (boşluğa) tıklayınca veya Esc ile kapat
+        document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); }));
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal').forEach(m => { if (m.style.display === 'flex') closeModal(m.id); }); });
+
         // Başlangıç Kurulumları
         changeLanguage(currentLang);
         updateModules(); loadAltSeason(); loadFG(); loadDom();
