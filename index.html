@@ -334,6 +334,20 @@
         .active-alarms-title { font-size: 11px; color: #16f7d1; font-weight: bold; margin-bottom: 6px; }
         .alarm-item { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #eaecef; background: #1a1d24; padding: 5px 8px; border-radius: 3px; margin-bottom: 4px; }
         .alarm-delete { color: #f6465d; cursor: pointer; font-weight: bold; }
+        .menu-row { display: flex; justify-content: space-between; align-items: center; background: #1a1d24; border-radius: 6px; padding: 12px; margin-bottom: 8px; font-size: 13px; color: #eaecef; cursor: pointer; }
+        .menu-row:active { background: #22262e; }
+        .menu-badge { background: #f6465d; color: #fff; font-size: 10px; font-weight: bold; border-radius: 8px; padding: 1px 7px; display: none; }
+        a.menu-row { text-decoration: none; }
+        .menu-sub { color: #848e9c; font-size: 11px; }
+        .menu-arrow { color: #848e9c; font-size: 18px; line-height: 1; }
+        .menu-foot { font-size: 10px; color: #5e6673; text-align: center; margin-top: 12px; }
+        .le-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+        .le-row input { flex: 1; min-width: 0; padding: 9px 10px; background: #1a1d24; border: 1px solid #363c4e; color: #fff; border-radius: 4px; font-size: 13px; outline: none; }
+        .le-row input:focus { border-color: #16f7d1; }
+        .le-del { color: #f6465d; background: transparent; border: 1px solid rgba(246,70,93,0.4); border-radius: 4px; height: 34px; min-width: 34px; padding: 0 8px; cursor: pointer; font-size: 11px; font-weight: bold; white-space: nowrap; }
+        .le-del.ph { visibility: hidden; }
+        .btn-del-list { background: transparent; color: #f6465d; border: 1px solid rgba(246,70,93,0.4); margin-right: auto; }
+        .tab { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
         .btn-all-alarms { position: sticky; right: 0; margin-left: auto; flex-shrink: 0; background: #121418; color: #16f7d1; border: 1px solid rgba(22,247,209,0.3); width: 30px; height: 26px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; margin-bottom: 4px; }
         .alarm-count { position: absolute; top: -6px; right: -4px; background: #f6465d; color: #fff; font-size: 9px; font-weight: bold; min-width: 14px; height: 14px; border-radius: 7px; display: none; align-items: center; justify-content: center; padding: 0 3px; }
         .aa-row { display: flex; align-items: center; gap: 8px; background: #1a1d24; border-radius: 4px; padding: 8px 10px; margin-bottom: 6px; font-size: 12px; color: #eaecef; cursor: pointer; }
@@ -409,7 +423,7 @@
     <div class="tabs-container">
         <div class="tabs" id="tabList"></div>
         <button class="btn-add-tab" onclick="createNewTab()" id="btnNewTabTitle" title="New List">＋</button>
-        <button class="btn-all-alarms" id="btnAllAlarms" onclick="openAllAlarms()" title="Alarm"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="alarm-count" id="alarmCount"></span></button>
+        <button class="btn-all-alarms" id="btnMenu" onclick="openMenu()" title="Menu"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg><span class="alarm-count" id="alarmCount"></span></button>
     </div>
 
     <div class="watch-grid" id="watchGrid"></div>
@@ -524,6 +538,47 @@
     </div>
 
     <!-- MODAL: Alarm & Ayarlar -->
+    <div class="modal" id="listModal">
+        <div class="modal-content">
+            <span class="modal-close-x" onclick="closeModal('listModal')">✕</span>
+            <h3 id="listModalTitle">Edit List</h3>
+            <div class="form-group">
+                <label id="lblListName">List name</label>
+                <input type="text" id="listNameInput" maxlength="20" onkeydown="if(event.key==='Enter')saveListEdit()">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-del-list" id="btnDelList" onclick="deleteListEdit()">Delete</button>
+                <button class="btn btn-close" onclick="closeModal('listModal')" id="btnListCancel">Cancel</button>
+                <button class="btn btn-add" onclick="saveListEdit()" id="btnListSave">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="menuModal">
+        <div class="modal-content">
+            <span class="modal-close-x" onclick="closeModal('menuModal')">✕</span>
+            <h3>ObTrader</h3>
+            <div class="menu-row" onclick="closeModal('menuModal'); openAllAlarms()"><span>🔔 <span id="mAlarms">My Alarms</span></span><span class="menu-badge" id="mAlarmCount"></span></div>
+            <div class="menu-row" onclick="closeModal('menuModal'); openListsEdit()"><span>✏️ <span id="mLists">Edit Lists</span></span><span class="menu-arrow">›</span></div>
+            <a class="menu-row" id="mPrivacyA" href="privacy.html"><span>🔒 <span id="mPrivacy">Privacy Policy</span></span><span class="menu-arrow">›</span></a>
+            <a class="menu-row" id="mTermsA" href="terms.html"><span>📄 <span id="mTerms">Terms of Use</span></span><span class="menu-arrow">›</span></a>
+            <a class="menu-row" href="mailto:info@obtrader.app"><span>🤝 <span id="mAds">Advertising &amp; Partnerships</span></span><span class="menu-sub">info@obtrader.app</span></a>
+            <div class="menu-foot">obtrader.app · v1.8 · <a href="mailto:support@obtrader.app" style="color:#5e6673">support@obtrader.app</a></div>
+        </div>
+    </div>
+
+    <div class="modal" id="listsModal">
+        <div class="modal-content">
+            <span class="modal-close-x" onclick="closeModal('listsModal')">✕</span>
+            <h3 id="listsModalTitle">Edit Lists</h3>
+            <div id="listsEditRows"></div>
+            <div class="modal-buttons">
+                <button class="btn btn-close" onclick="closeModal('listsModal')" id="btnListsCancel">Cancel</button>
+                <button class="btn btn-add" onclick="saveListsEdit()" id="btnListsSave">Save</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal" id="allAlarmsModal">
         <div class="modal-content">
             <span class="modal-close-x" onclick="closeModal('allAlarmsModal')">✕</span>
@@ -580,6 +635,9 @@
     <script>
         const i18n = {
             en: {
+                mPrivacy: "Privacy Policy", mTerms: "Terms of Use", mAds: "Advertising & Partnerships",
+                editLists: "Edit Lists",
+                listEdit: "Edit List", listName: "List name", listSave: "Save", listDel: "Delete list", listDelSure: "Delete?",
                 maxLists: "You can create up to {n} lists.",
                 fgTitle: "Crypto Fear & Greed Index",
                 fgEF: "Extreme Fear", fgF: "Fear", fgN: "Neutral", fgG: "Greed", fgEG: "Extreme Greed",
@@ -632,6 +690,9 @@
                 notFound: "Coin not found"
             },
             zh: {
+                mPrivacy: "隐私政策", mTerms: "使用条款", mAds: "广告与合作",
+                editLists: "编辑列表",
+                listEdit: "编辑列表", listName: "列表名称", listSave: "保存", listDel: "删除列表", listDelSure: "删除？",
                 maxLists: "最多可创建 {n} 个列表。",
                 fgTitle: "加密货币恐惧与贪婪指数",
                 fgEF: "极度恐惧", fgF: "恐惧", fgN: "中性", fgG: "贪婪", fgEG: "极度贪婪",
@@ -680,6 +741,9 @@
                 notFound: "未找到币种"
             },
             ru: {
+                mPrivacy: "Конфиденциальность", mTerms: "Условия использования", mAds: "Реклама и партнёрство",
+                editLists: "Редактировать списки",
+                listEdit: "Редактировать список", listName: "Название списка", listSave: "Сохранить", listDel: "Удалить список", listDelSure: "Удалить?",
                 maxLists: "Можно создать не более {n} списков.",
                 fgTitle: "Индекс страха и жадности",
                 fgEF: "Крайний страх", fgF: "Страх", fgN: "Нейтрально", fgG: "Жадность", fgEG: "Крайняя жадность",
@@ -732,6 +796,9 @@
                 notFound: "Монета не найдена"
             },
             tr: {
+                mPrivacy: "Gizlilik Politikası", mTerms: "Kullanım Koşulları", mAds: "Reklam ve İş Birliği",
+                editLists: "Listeleri Düzenle",
+                listEdit: "Listeyi Düzenle", listName: "Liste adı", listSave: "Kaydet", listDel: "Listeyi sil", listDelSure: "Silinsin mi?",
                 maxLists: "En fazla {n} liste oluşturabilirsin.",
                 fgTitle: "Kripto Korku ve Açgözlülük Endeksi",
                 fgEF: "Aşırı Korku", fgF: "Korku", fgN: "Nötr", fgG: "Açgözlülük", fgEG: "Aşırı Açgözlülük",
@@ -936,9 +1003,45 @@
                 const tab = document.createElement('div');
                 tab.className = `tab ${l.id === activeListId ? 'active' : ''}`;
                 tab.innerText = l.title;
-                tab.onclick = () => switchTab(l.id);
+                let lp = null, long = false;
+                tab.onclick = () => { if (long) { long = false; return; } switchTab(l.id); };
+                tab.ondblclick = () => openListEdit(l.id);
+                tab.oncontextmenu = e => { e.preventDefault(); openListEdit(l.id); };
+                tab.addEventListener('touchstart', () => { long = false; lp = setTimeout(() => { long = true; try { navigator.vibrate && navigator.vibrate(30); } catch (e) {} openListEdit(l.id); }, 500); }, { passive: true });
+                ['touchend', 'touchmove', 'touchcancel'].forEach(ev => tab.addEventListener(ev, () => clearTimeout(lp), { passive: true }));
                 tabList.appendChild(tab);
             });
+        }
+
+        /* ===== LİSTE ADI / SİLME (basılı tut, sağ tık veya çift tık) ===== */
+        let editListId = null;
+        function openListEdit(id) {
+            const l = lists.find(x => x.id === id); if (!l) return;
+            const t = i18n[currentLang], tx = k => t[k] || i18n.en[k];
+            editListId = id;
+            document.getElementById('listModalTitle').innerText = tx('listEdit');
+            document.getElementById('lblListName').innerText = tx('listName');
+            document.getElementById('btnListCancel').innerText = t.cancel;
+            document.getElementById('btnListSave').innerText = tx('listSave');
+            const del = document.getElementById('btnDelList');
+            del.innerText = tx('listDel'); del.dataset.armed = '';
+            del.style.display = lists[0].id === id ? 'none' : '';
+            const inp = document.getElementById('listNameInput');
+            inp.value = l.title;
+            document.getElementById('listModal').style.display = 'flex';
+            setTimeout(() => { inp.focus(); inp.select(); }, 50);
+        }
+        function saveListEdit() {
+            const l = lists.find(x => x.id === editListId);
+            const v = document.getElementById('listNameInput').value.trim();
+            if (l && v) { l.title = v; delete l.titleKey; persistState(); renderTabs(); }
+            closeModal('listModal');
+        }
+        function deleteListEdit() {
+            const del = document.getElementById('btnDelList'), t = i18n[currentLang];
+            if (!del.dataset.armed) { del.dataset.armed = '1'; del.innerText = t.listDelSure || i18n.en.listDelSure; return; }
+            const i = lists.findIndex(x => x.id === editListId);
+            if (i > 0) { const wasActive = activeListId === editListId; lists.splice(i, 1); closeModal('listModal'); if (wasActive) switchTab(lists[i - 1].id); else renderTabs(); persistState(); }
         }
 
         const MAX_LISTS = 5; // ileride: ücretsiz kullanıcıya sınır, Pro'ya daha fazla
@@ -959,6 +1062,7 @@
             });
 
             switchTab(newId);
+            openListEdit(newId); // yeni listeye hemen isim ver
         }
 
         function updateModules() {
@@ -1050,6 +1154,49 @@
             const el = document.getElementById('alarmCount'); if (!el) return;
             const n = activeAlarmKeys().reduce((c, k) => c + (alarms[k].targetPrice ? 1 : 0) + (alarms[k].volumeThreshold ? 1 : 0), 0);
             el.innerText = n; el.style.display = n ? 'flex' : 'none';
+        }
+        function tx(k) { return i18n[currentLang][k] || i18n.en[k]; }
+        function openMenu() {
+            document.getElementById('mAlarms').innerText = tx('allAlarms');
+            document.getElementById('mLists').innerText = tx('editLists');
+            document.getElementById('mPrivacy').innerText = tx('mPrivacy');
+            document.getElementById('mTerms').innerText = tx('mTerms');
+            document.getElementById('mAds').innerText = tx('mAds');
+            document.getElementById('mPrivacyA').href = 'privacy.html?lang=' + currentLang;
+            document.getElementById('mTermsA').href = 'terms.html?lang=' + currentLang;
+            const c = document.getElementById('alarmCount').innerText, b = document.getElementById('mAlarmCount');
+            b.innerText = c; b.style.display = (c && c !== '0') ? 'inline-block' : 'none';
+            document.getElementById('menuModal').style.display = 'flex';
+        }
+        let leDeleted = new Set();
+        function openListsEdit() {
+            leDeleted = new Set();
+            document.getElementById('listsModalTitle').innerText = tx('editLists');
+            document.getElementById('btnListsCancel').innerText = tx('cancel');
+            document.getElementById('btnListsSave').innerText = tx('listSave');
+            const box = document.getElementById('listsEditRows'); box.innerHTML = '';
+            lists.forEach((l, i) => {
+                const row = document.createElement('div'); row.className = 'le-row';
+                const inp = document.createElement('input'); inp.type = 'text'; inp.maxLength = 20; inp.value = l.title; inp.dataset.id = l.id;
+                const del = document.createElement('button'); del.className = 'le-del' + (i === 0 ? ' ph' : ''); del.innerText = '✕';
+                del.onclick = () => {
+                    if (!del.dataset.armed) { del.dataset.armed = '1'; del.innerText = tx('listDelSure'); return; }
+                    leDeleted.add(l.id); row.remove();
+                };
+                row.append(inp, del); box.appendChild(row);
+            });
+            document.getElementById('listsModal').style.display = 'flex';
+        }
+        function saveListsEdit() {
+            document.querySelectorAll('#listsEditRows input').forEach(inp => {
+                const l = lists.find(x => x.id === inp.dataset.id), v = inp.value.trim();
+                if (l && v && v !== l.title) { l.title = v; delete l.titleKey; }
+            });
+            const wasActiveDeleted = leDeleted.has(activeListId);
+            lists = lists.filter((l, i) => i === 0 || !leDeleted.has(l.id));
+            closeModal('listsModal');
+            if (wasActiveDeleted) switchTab(lists[0].id); else renderTabs();
+            persistState();
         }
         function openAllAlarms() { renderAllAlarms(); document.getElementById('allAlarmsModal').style.display = 'flex'; }
         function renderAllAlarms() {

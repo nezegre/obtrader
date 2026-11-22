@@ -337,6 +337,8 @@
         .menu-row { display: flex; justify-content: space-between; align-items: center; background: #1a1d24; border-radius: 6px; padding: 12px; margin-bottom: 8px; font-size: 13px; color: #eaecef; cursor: pointer; }
         .menu-row:active { background: #22262e; }
         .menu-badge { background: #f6465d; color: #fff; font-size: 10px; font-weight: bold; border-radius: 8px; padding: 1px 7px; display: none; }
+        a.menu-row { text-decoration: none; }
+        .menu-sub { color: #848e9c; font-size: 11px; }
         .menu-arrow { color: #848e9c; font-size: 18px; line-height: 1; }
         .menu-foot { font-size: 10px; color: #5e6673; text-align: center; margin-top: 12px; }
         .le-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
@@ -558,7 +560,10 @@
             <h3>ObTrader</h3>
             <div class="menu-row" onclick="closeModal('menuModal'); openAllAlarms()"><span>🔔 <span id="mAlarms">My Alarms</span></span><span class="menu-badge" id="mAlarmCount"></span></div>
             <div class="menu-row" onclick="closeModal('menuModal'); openListsEdit()"><span>✏️ <span id="mLists">Edit Lists</span></span><span class="menu-arrow">›</span></div>
-            <div class="menu-foot">obtrader.app · v1.8 · @gengtur</div>
+            <a class="menu-row" id="mPrivacyA" href="privacy.html"><span>🔒 <span id="mPrivacy">Privacy Policy</span></span><span class="menu-arrow">›</span></a>
+            <a class="menu-row" id="mTermsA" href="terms.html"><span>📄 <span id="mTerms">Terms of Use</span></span><span class="menu-arrow">›</span></a>
+            <a class="menu-row" href="mailto:info@obtrader.app"><span>🤝 <span id="mAds">Advertising &amp; Partnerships</span></span><span class="menu-sub">info@obtrader.app</span></a>
+            <div class="menu-foot">obtrader.app · v1.8 · <a href="mailto:support@obtrader.app" style="color:#5e6673">support@obtrader.app</a></div>
         </div>
     </div>
 
@@ -630,6 +635,7 @@
     <script>
         const i18n = {
             en: {
+                mPrivacy: "Privacy Policy", mTerms: "Terms of Use", mAds: "Advertising & Partnerships",
                 editLists: "Edit Lists",
                 listEdit: "Edit List", listName: "List name", listSave: "Save", listDel: "Delete list", listDelSure: "Delete?",
                 maxLists: "You can create up to {n} lists.",
@@ -684,6 +690,7 @@
                 notFound: "Coin not found"
             },
             zh: {
+                mPrivacy: "隐私政策", mTerms: "使用条款", mAds: "广告与合作",
                 editLists: "编辑列表",
                 listEdit: "编辑列表", listName: "列表名称", listSave: "保存", listDel: "删除列表", listDelSure: "删除？",
                 maxLists: "最多可创建 {n} 个列表。",
@@ -734,6 +741,7 @@
                 notFound: "未找到币种"
             },
             ru: {
+                mPrivacy: "Конфиденциальность", mTerms: "Условия использования", mAds: "Реклама и партнёрство",
                 editLists: "Редактировать списки",
                 listEdit: "Редактировать список", listName: "Название списка", listSave: "Сохранить", listDel: "Удалить список", listDelSure: "Удалить?",
                 maxLists: "Можно создать не более {n} списков.",
@@ -788,6 +796,7 @@
                 notFound: "Монета не найдена"
             },
             tr: {
+                mPrivacy: "Gizlilik Politikası", mTerms: "Kullanım Koşulları", mAds: "Reklam ve İş Birliği",
                 editLists: "Listeleri Düzenle",
                 listEdit: "Listeyi Düzenle", listName: "Liste adı", listSave: "Kaydet", listDel: "Listeyi sil", listDelSure: "Silinsin mi?",
                 maxLists: "En fazla {n} liste oluşturabilirsin.",
@@ -1150,6 +1159,11 @@
         function openMenu() {
             document.getElementById('mAlarms').innerText = tx('allAlarms');
             document.getElementById('mLists').innerText = tx('editLists');
+            document.getElementById('mPrivacy').innerText = tx('mPrivacy');
+            document.getElementById('mTerms').innerText = tx('mTerms');
+            document.getElementById('mAds').innerText = tx('mAds');
+            document.getElementById('mPrivacyA').href = 'privacy.html?lang=' + currentLang;
+            document.getElementById('mTermsA').href = 'terms.html?lang=' + currentLang;
             const c = document.getElementById('alarmCount').innerText, b = document.getElementById('mAlarmCount');
             b.innerText = c; b.style.display = (c && c !== '0') ? 'inline-block' : 'none';
             document.getElementById('menuModal').style.display = 'flex';
