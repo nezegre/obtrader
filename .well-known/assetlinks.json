@@ -1,0 +1,11 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "app.obtrader",
+    "sha256_cert_fingerprints": [
+      "12:3F:6D:CD:82:41:A0:37:E6:A7:DF:7D:78:96:59:58:A3:02:70:16:6C:E0:4A:10:7B:81:59:CA:8D:67:97:85",
+      "BD:8D:4D:D6:82:05:26:58:00:FC:63:47:4D:00:71:03:B7:72:B7:C6:80:32:F4:38:44:F0:53:EC:55:85:EC:3A"
+    ]
+  }
+}]
