@@ -28,6 +28,21 @@ if ($cmd === '/start' && isset($args[0]) && preg_match('/^(binance|okx|coinbase)
     send($cid, implode("\n\n", $out)); exit;
 }
 
+// Uygulamada silinen alarm: /start del_binance_BTC_pw  (p = fiyat, w = balina)
+if ($cmd === '/start' && isset($args[0]) && preg_match('/^del_(binance|okx|coinbase)_([A-Z0-9]{1,15})_(p?w?)$/', $args[0], $m) && $m[3] !== '') {
+    [, $ex, $base, $what] = $m;
+    $n = with_db(function (&$db) use ($cid, $ex, $base, $what) {
+        $al = $db['chats'][$cid]['alarms'] ?? [];
+        $new = array_values(array_filter($al, fn($a) => !($a['base'] === $base && (
+            ($a['type'] === 'price' && $a['ex'] === $ex && strpos($what, 'p') !== false) ||
+            ($a['type'] === 'whale' && strpos($what, 'w') !== false)))));
+        if (isset($db['chats'][$cid])) $db['chats'][$cid]['alarms'] = $new;
+        return count($al) - count($new);
+    });
+    send($cid, $n ? "🗑 $base için $n alarm silindi (uygulamadan)." : "$base için silinecek alarm bulunamadı. /liste ile bak.");
+    exit;
+}
+
 if (in_array($cmd, ['/start', '/yardim', '/help'], true)) { send($cid, HELP); exit; }
 
 if ($cmd === '/liste') {
@@ -44,7 +59,7 @@ if ($cmd === '/sil') {
     $ok = with_db(function (&$db) use ($cid, $id) {
         $al = $db['chats'][$cid]['alarms'] ?? [];
         $new = array_values(array_filter($al, fn($a) => $a['id'] !== $id));
-        $db['chats'][$cid]['alarms'] = $new;
+        if (isset($db['chats'][$cid])) $db['chats'][$cid]['alarms'] = $new;
         return count($new) !== count($al);
     });
     send($cid, $ok ? "$id numaralı alarm silindi." : 'Bu numarada alarm yok. /liste ile bak.'); exit;

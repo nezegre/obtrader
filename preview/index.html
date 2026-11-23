@@ -285,6 +285,7 @@
         .form-group label { display: block; font-size: 11px; color: #848e9c; margin-bottom: 4px; }
         .form-group input[type="text"], .form-group input[type="number"] { width: 100%; padding: 10px; background: #1a1d24; border: 1px solid #363c4e; color: #fff; border-radius: 4px; font-size: 13px; outline: none; transition: border-color 0.2s; }
         .form-group input[type="text"]:focus { border-color: #16f7d1; }
+        .form-group input::placeholder { color: #5e6673; opacity: 1; }
 
         /* ARAMA DROPDOWN BİLEŞENİ */
         .search-results-dropdown {
@@ -688,6 +689,8 @@
                 bgNote: "In-app alarms only work while the screen is on. Use Telegram to get alerts when it's off.",
                 tgHint: "Works even when the app is closed.",
                 tgNeed: "Enter a target price or whale volume first.",
+                eg: "e.g.",
+                tgDel: "Tap Start in Telegram to delete it there too.",
                 buyText: "Buy",
                 sellText: "Sell",
                 notFound: "Coin not found"
@@ -794,6 +797,8 @@
                 bgNote: "Алерты в приложении работают только при включённом экране. Для уведомлений при выключенном экране используйте Telegram.",
                 tgHint: "Работает даже при закрытом приложении.",
                 tgNeed: "Сначала введите цену или объём кита.",
+                eg: "напр.",
+                tgDel: "Нажмите Start в Telegram, чтобы удалить и там.",
                 buyText: "Покупка",
                 sellText: "Продажа",
                 notFound: "Монета не найдена"
@@ -849,6 +854,8 @@
                 bgNote: "Uygulama içi alarm yalnızca ekran açıkken çalışır. Ekran kapalıyken de bildirim için Telegram'ı kullan.",
                 tgHint: "Uygulama kapalıyken de bildirim gelir.",
                 tgNeed: "Önce hedef fiyat veya balina tutarı gir.",
+                eg: "örn:",
+                tgDel: "Telegram'dan da silmek için Başlat'a bas.",
                 buyText: "Alım",
                 sellText: "Satım",
                 notFound: "Coin bulunamadı"
@@ -968,6 +975,9 @@
             document.getElementById('modalAddTitle').innerText = t.addModalTitle;
             document.getElementById('lblCoinSymbol').innerText = t.coinSymbol;
             document.getElementById('newSymbolInput').placeholder = t.symbolPlaceholder;
+            const eg = t.eg || i18n.en.eg;
+            document.getElementById('alarmTargetPrice').placeholder = eg + ' 0.00';
+            document.getElementById('alarmVolumeThreshold').placeholder = eg + ' 250000';
             document.getElementById('btnCancel').innerText = t.cancel;
             document.getElementById('lblTargetPrice').innerText = t.targetPrice;
             document.getElementById('lblWhaleVol').innerText = t.whaleVol;
@@ -1240,7 +1250,7 @@
                     row.className = 'aa-row';
                     row.innerHTML = `<div class="aa-info"><b>${keyLabel(k)}</b><span class="aa-sub">${txt} · ${mode}</span></div><span class="alarm-delete">✕</span>`;
                     row.onclick = () => { closeModal('allAlarmsModal'); openAlarmModal(k, keyLabel(k)); };
-                    row.querySelector('.alarm-delete').onclick = e => { e.stopPropagation(); delete a[prop]; persistState(); renderGrid(); renderAllAlarms(); };
+                    row.querySelector('.alarm-delete').onclick = e => { e.stopPropagation(); tgDelete(k, prop); delete a[prop]; persistState(); renderGrid(); renderAllAlarms(); };
                     box.appendChild(row);
                 });
             });
@@ -1813,6 +1823,7 @@
 
         function clearAlarmProp(sym, prop) {
             if (alarms[sym]) {
+                tgDelete(sym, prop);
                 delete alarms[sym][prop];
                 renderActiveAlarmsList(sym);
                 renderGrid();
@@ -1839,6 +1850,7 @@
                     targetPrice: targetPrice || null,
                     volumeThreshold: volumeThreshold || null,
                     mode: mode,
+                    tg: (alarms[targetAlarmSymbol] || {}).tg || null,
                     dir: (targetPrice && cur) ? (targetPrice > cur ? 'up' : 'down') : null
                 };
                 persistState();
@@ -1868,7 +1880,21 @@
             const n = v => v.toFixed(8).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '').replace('.', 'd'); // 1e-7 gibi bilimsel gösterim olmasın
             const payload = `${botEx}_${base}_${op}_${n(price)}_${n(whale)}`.slice(0, 64);
             saveAlarmSettings();
+            const a = alarms[key]; if (a) { a.tg = Object.assign({}, a.tg, price ? { p: 1 } : {}, whale ? { w: 1 } : {}); persistState(); }
             window.open(`https://t.me/${TG_BOT}?start=${payload}`, '_blank');
+        }
+
+        // Telegram'a da gönderilmiş alarm silinince botta da silinsin: /start del_<borsa>_<COIN>_<p|w|pw>
+        function tgDelete(key, prop) {
+            const a = alarms[key]; if (!a || !a.tg) return;
+            let w = '';
+            if ((!prop || prop === 'targetPrice') && a.tg.p && a.targetPrice) { w += 'p'; delete a.tg.p; }
+            if ((!prop || prop === 'volumeThreshold') && a.tg.w && a.volumeThreshold) { w += 'w'; delete a.tg.w; }
+            if (!w) return;
+            const i = key.indexOf('-'), ex = key.slice(0, i), base = baseOf(key.slice(i + 1));
+            const botEx = ['binance', 'okx', 'coinbase'].includes(ex) ? ex : 'binance';
+            showToast(tx('tgDel'));
+            window.open(`https://t.me/${TG_BOT}?start=del_${botEx}_${base}_${w}`, '_blank');
         }
 
         function removeCurrentSymbol() {
@@ -1877,6 +1903,7 @@
             const currentList = getCurrentList();
             currentList.symbols = currentList.symbols.filter(s => ik(s.exchange, s.symbol) !== targetAlarmSymbol);
             
+            tgDelete(targetAlarmSymbol);
             delete alarms[targetAlarmSymbol];
 
             const msg = i18n[currentLang].toastRemoved.replace('{sym}', keyLabel(targetAlarmSymbol));
