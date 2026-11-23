@@ -451,7 +451,7 @@
             </svg>
             <div class="fg-lbl" id="fgLbl">&nbsp;</div>
         </div>
-        <div class="as-foot"><span>alternative.me</span><span id="fgUpd"></span></div>
+        <div class="as-foot"><span id="fgSrc">alternative.me</span><span id="fgUpd"></span></div>
     </div>
 
     <div class="as-box" id="domBox">
@@ -563,7 +563,7 @@
             <a class="menu-row" id="mPrivacyA" href="privacy.html"><span>🔒 <span id="mPrivacy">Privacy Policy</span></span><span class="menu-arrow">›</span></a>
             <a class="menu-row" id="mTermsA" href="terms.html"><span>📄 <span id="mTerms">Terms of Use</span></span><span class="menu-arrow">›</span></a>
             <a class="menu-row" href="mailto:info@obtrader.app"><span>🤝 <span id="mAds">Advertising &amp; Partnerships</span></span><span class="menu-sub">info@obtrader.app</span></a>
-            <div class="menu-foot">obtrader.app · v1.8 · <a href="mailto:support@obtrader.app" style="color:#5e6673">support@obtrader.app</a></div>
+            <div class="menu-foot">obtrader.app · v1.9 · <a href="mailto:support@obtrader.app" style="color:#5e6673">support@obtrader.app</a></div>
         </div>
     </div>
 
@@ -1876,8 +1876,18 @@
             }
         });
 
+        /* ===== CMC ara katmanı (cryptoverifly) — Korku & Açgözlülük + Altcoin Sezonu, 15 dk'da bir güncellenir ===== */
+        const CMC_URL = 'https://cryptoverifly.com/api/cmc.php';
+        let cmcReq = null, cmcAt = 0;
+        function cmcData() {
+            if (cmcReq && Date.now() - cmcAt < 60e3) return cmcReq;
+            cmcAt = Date.now();
+            cmcReq = fetch(CMC_URL).then(r => r.json()).catch(() => null);
+            return cmcReq;
+        }
+
         /* ===== ALTCOIN SEZONU ENDEKSİ (ilk 100, 90 gün, BTC'ye göre) ===== */
-        const AS_KEY = 'obtrader_altseason_v1', AS_TTL = 6 * 3600 * 1000;
+        const AS_KEY = 'obtrader_altseason_v1', AS_TTL = 900 * 1000;
         let asData = null; try { asData = JSON.parse(localStorage.getItem(AS_KEY) || 'null'); } catch (e) {}
         const STABLE = /usd|eur|dai$|^frax|^gho$|^xaut$|^paxg$/i, WRAP = /wrapped|staked|bridged|restaked|liquid|binance-peg/i;
         async function asCandidates() {
@@ -1919,11 +1929,18 @@
                 up.innerText = `${t.asUpd || i18n.en.asUpd}: ${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
             } else up.innerText = err ? (t.asErr || i18n.en.asErr) : (t.asLoading || i18n.en.asLoading);
         }
+        let asBusy = false;
         async function loadAltSeason() {
             renderAltSeason();
-            if (asData && Date.now() - asData.t < AS_TTL) return;
+            if (asBusy || (asData && Date.now() - (asData.chk || asData.t) < AS_TTL)) return;
+            asBusy = true;
+            try {
+                const c = await cmcData();
+                if (c && c.as && isFinite(c.as.v)) { asData = { v: c.as.v, t: c.as.t * 1000, src: 'cmc', chk: Date.now() }; try { localStorage.setItem(AS_KEY, JSON.stringify(asData)); } catch (e) {} renderAltSeason(); return; }
+            } catch (e) {}
             try { asData = await calcAltSeason(); try { localStorage.setItem(AS_KEY, JSON.stringify(asData)); } catch (e) {} renderAltSeason(); }
             catch (e) { renderAltSeason(true); }
+            finally { asBusy = false; }
         }
 
         /* ===== KORKU & AÇGÖZLÜLÜK + DOMİNANS ===== */
@@ -1941,6 +1958,7 @@
             const l = document.getElementById('fgLbl');
             l.innerText = t[['fgEF', 'fgF', 'fgN', 'fgG', 'fgEG'][b]]; l.style.color = FG_COL[b];
             document.getElementById('fgUpd').innerText = `${t.asUpd || i18n.en.asUpd}: ${hhmm(fgData.t)}`;
+            document.getElementById('fgSrc').innerText = fgData.src || 'alternative.me';
         }
         function renderDom() {
             if (!domData) return;
@@ -1952,16 +1970,20 @@
         }
         async function loadFG() {
             renderFG();
-            if (fgData && Date.now() - fgData.t < 3600e3) return;
+            if (fgData && fgData.chk && Date.now() - fgData.chk < 300e3) return;
+            try {
+                const c = await cmcData();
+                if (c && c.fg && isFinite(c.fg.v)) { fgData = { v: c.fg.v, t: c.fg.t * 1000, src: 'CoinMarketCap', chk: Date.now() }; cacheSet('obtrader_fg_v1', fgData); renderFG(); return; }
+            } catch (e) {}
             try {
                 const j = await (await fetch('https://api.alternative.me/fng/?limit=1')).json();
                 const v = +j.data[0].value; if (!isFinite(v)) return;
-                fgData = { v, t: Date.now() }; cacheSet('obtrader_fg_v1', fgData); renderFG();
+                fgData = { v, t: Date.now(), src: 'alternative.me', chk: Date.now() }; cacheSet('obtrader_fg_v1', fgData); renderFG();
             } catch (e) {}
         }
         async function loadDom() {
             renderDom();
-            if (domData && Date.now() - domData.t < 600e3) return;
+            if (domData && Date.now() - domData.t < 110e3) return;
             try {
                 const j = await (await fetch('https://api.coingecko.com/api/v3/global')).json();
                 const m = j.data.market_cap_percentage, btc = +m.btc, usdt = +m.usdt;
@@ -1969,7 +1991,11 @@
                 domData = { btc, usdt, alts: Math.max(0, 100 - btc - usdt), t: Date.now() }; cacheSet('obtrader_dom_v1', domData); renderDom();
             } catch (e) {}
         }
-        setInterval(() => { if (!document.hidden) { loadFG(); loadDom(); } }, 300e3);
+        function refreshModules() { loadFG(); loadDom(); loadAltSeason(); }
+        setInterval(() => { if (!document.hidden) refreshModules(); }, 120e3);
+        // Uygulamaya geri dönünce (mobilde arka plandan) hemen yenile
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshModules(); });
+        window.addEventListener('pageshow', e => { if (e.persisted) refreshModules(); });
 
         // Pencere dışına (boşluğa) tıklayınca veya Esc ile kapat
         document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); }));
